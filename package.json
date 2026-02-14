@@ -1,0 +1,12 @@
+{
+  "name": "diagram-studio",
+  "version": "1.0.0",
+  "description": "OpenAI-style diagram generator",
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'Static site, no build needed'"
+  },
+  "keywords": ["diagram", "svg", "sequence-diagram"],
+  "author": "Sanath",
+  "license": "MIT"
+}

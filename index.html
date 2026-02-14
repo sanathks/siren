@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagram Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            storm: {
+              bg: '#1a1b26',
+              bg2: '#24283b',
+              fg: '#a9b1d6',
+              accent: '#7aa2f7',
+              green: '#9ece6a',
+              red: '#f7768e',
+              yellow: '#e0af68',
+              purple: '#bb9af7',
+              cyan: '#7dcfff',
+              orange: '#ff9e64',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body { background: #1a1b26; overflow: hidden; }
+    .node { cursor: move; user-select: none; }
+    .node:hover .node-border { stroke-width: 2.5; }
+    .node.selected .node-border { stroke: #7aa2f7; stroke-width: 2.5; }
+    .connector { cursor: crosshair; opacity: 0; transition: opacity 0.15s; }
+    .node:hover .connector { opacity: 1; }
+    .connector:hover { fill: #7aa2f7 !important; }
+    .connection { pointer-events: stroke; cursor: pointer; }
+    .connection:hover { stroke-width: 2.5; }
+    .connection-group .delete-btn { opacity: 0; cursor: pointer; transition: opacity 0.15s; }
+    .connection-group:hover .delete-btn { opacity: 1; }
+    .connection-group .delete-btn:hover { fill: #f7768e; }
+    .container-fill { pointer-events: none; }
+    .resize-handle { cursor: se-resize; opacity: 0; }
+    .node.selected .resize-handle { opacity: 1; }
+    .fill-style-btn.active { background: #7aa2f7; color: #1a1b26; }
+    .insert-menu { max-height: 300px; overflow-y: auto; }
+    kbd { background: #24283b; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+  </style>
+</head>
+<body class="h-screen flex">
+  <!-- Sidebar -->
+  <aside class="w-64 bg-storm-bg2 border-r border-storm-bg flex flex-col p-4 z-20">
+    <h1 class="text-xl font-bold mb-4 text-storm-accent">Diagram Studio</h1>
+    
+    <!-- Quick actions -->
+    <div class="mb-4 text-xs text-storm-fg/50 space-y-1">
+      <p><kbd>/</kbd> Insert menu</p>
+      <p><kbd>⌘Z</kbd> Undo <kbd>⌘⇧Z</kbd> Redo</p>
+      <p><kbd>Del</kbd> Delete selected</p>
+      <p><kbd>⌘C</kbd> Copy <kbd>⌘V</kbd> Paste</p>
+      <p><kbd>Alt</kbd>+drag to duplicate</p>
+      <p>Double-click to edit label</p>
+      <p>Scroll to zoom, drag to pan</p>
+    </div>
+    
+    <!-- Add shapes -->
+    <div class="mb-4">
+      <label class="text-sm text-storm-fg/60 mb-2 block">Add Shape</label>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="addNode('pill')" class="bg-storm-bg hover:bg-storm-accent/20 border border-storm-fg/20 rounded-full px-3 py-2 text-xs text-storm-fg">Pill</button>
+        <button onclick="addNode('rect')" class="bg-storm-bg hover:bg-storm-accent/20 border border-storm-fg/20 rounded px-3 py-2 text-xs text-storm-fg">Rectangle</button>
+        <button onclick="addNode('container')" class="col-span-2 bg-storm-bg hover:bg-storm-accent/20 border border-storm-fg/20 rounded px-3 py-2 text-xs text-storm-fg">Container</button>
+      </div>
+    </div>
+    
+    <!-- Selected properties -->
+    <div id="nodeProps" class="mb-4 hidden">
+      <label class="text-sm text-storm-fg/60 mb-2 block">Selected</label>
+      <input type="text" id="nodeLabel" placeholder="Label" 
+        class="w-full bg-storm-bg border border-storm-fg/20 rounded px-3 py-2 text-sm text-storm-fg mb-2">
+      
+      <!-- Fill style -->
+      <div id="fillStylePicker" class="mb-3">
+        <label class="text-xs text-storm-fg/60 mb-1 block">Fill Style</label>
+        <div class="flex gap-1 flex-wrap">
+          <button onclick="setFillStyle('outline')" class="fill-style-btn flex-1 bg-storm-bg hover:bg-storm-accent/20 border border-storm-fg/20 rounded px-2 py-1 text-xs text-storm-fg" data-style="outline">Outline</button>
+          <button onclick="setFillStyle('infill')" class="fill-style-btn flex-1 bg-storm-bg hover:bg-storm-accent/20 border border-storm-fg/20 rounded px-2 py-1 text-xs text-storm-fg" data-style="infill">Infill</button>
+          <button onclick="setFillStyle('stripe')" class="fill-style-btn flex-1 bg-storm-bg hover:bg-storm-accent/20 border border-storm-fg/20 rounded px-2 py-1 text-xs text-storm-fg" data-style="stripe">Stripe</button>
+          <button onclick="setFillStyle('grid')" class="fill-style-btn flex-1 bg-storm-bg hover:bg-storm-accent/20 border border-storm-fg/20 rounded px-2 py-1 text-xs text-storm-fg" data-style="grid">Grid</button>
+        </div>
+      </div>
+      
+      <!-- Color picker -->
+      <label class="text-xs text-storm-fg/60 mb-1 block">Color</label>
+      <div id="colorPicker" class="flex gap-1 mb-3 flex-wrap">
+        <button onclick="setNodeColor('')" class="w-6 h-6 rounded border-2 border-storm-fg/40 bg-storm-bg2" title="Default"></button>
+        <button onclick="setNodeColor('#7aa2f7')" class="w-6 h-6 rounded border-2 border-transparent hover:border-white" style="background:#7aa2f7" title="Blue"></button>
+        <button onclick="setNodeColor('#9ece6a')" class="w-6 h-6 rounded border-2 border-transparent hover:border-white" style="background:#9ece6a" title="Green"></button>
+        <button onclick="setNodeColor('#f7768e')" class="w-6 h-6 rounded border-2 border-transparent hover:border-white" style="background:#f7768e" title="Red"></button>
+        <button onclick="setNodeColor('#e0af68')" class="w-6 h-6 rounded border-2 border-transparent hover:border-white" style="background:#e0af68" title="Yellow"></button>
+        <button onclick="setNodeColor('#bb9af7')" class="w-6 h-6 rounded border-2 border-transparent hover:border-white" style="background:#bb9af7" title="Purple"></button>
+        <button onclick="setNodeColor('#7dcfff')" class="w-6 h-6 rounded border-2 border-transparent hover:border-white" style="background:#7dcfff" title="Cyan"></button>
+        <button onclick="setNodeColor('#ff9e64')" class="w-6 h-6 rounded border-2 border-transparent hover:border-white" style="background:#ff9e64" title="Orange"></button>
+      </div>
+      
+      <div class="flex gap-2">
+        <button onclick="duplicateSelected()" class="flex-1 bg-storm-bg hover:bg-storm-accent/20 border border-storm-fg/20 rounded px-2 py-1 text-xs text-storm-fg">Duplicate</button>
+        <button onclick="deleteSelected()" class="flex-1 bg-storm-red/20 hover:bg-storm-red/30 text-storm-red rounded px-2 py-1 text-xs">Delete</button>
+      </div>
+    </div>
+    
+    <!-- Grid toggle -->
+    <div class="mb-4">
+      <label class="flex items-center gap-2 text-sm text-storm-fg cursor-pointer">
+        <input type="checkbox" id="gridToggle" onchange="toggleGrid()" checked class="rounded">
+        <span>Snap to grid</span>
+      </label>
+    </div>
+    
+    <div class="mt-auto space-y-2">
+      <button onclick="clearCanvas()" class="w-full bg-storm-bg hover:bg-storm-red/20 border border-storm-fg/20 py-2 px-4 rounded text-sm text-storm-fg">
+        Clear Canvas
+      </button>
+      <button onclick="downloadSVG()" class="w-full bg-storm-bg hover:bg-storm-bg2 border border-storm-fg/20 py-2 px-4 rounded text-sm text-storm-fg">
+        Download SVG
+      </button>
+      <button onclick="downloadPNG()" class="w-full bg-storm-accent hover:bg-storm-accent/80 text-storm-bg py-2 px-4 rounded text-sm font-medium">
+        Download PNG
+      </button>
+    </div>
+  </aside>
+  
+  <!-- Canvas -->
+  <main id="canvasContainer" class="flex-1 relative overflow-hidden">
+    <svg id="canvas" class="w-full h-full" style="background: #1a1b26;">
+      <defs>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <circle cx="10" cy="10" r="0.5" fill="#414868" opacity="0.5"/>
+        </pattern>
+        <pattern id="stipple" width="6" height="6" patternUnits="userSpaceOnUse">
+          <circle cx="1.5" cy="1.5" r="0.5" fill="#a9b1d6" opacity="0.15"/>
+          <circle cx="4.5" cy="4.5" r="0.5" fill="#a9b1d6" opacity="0.15"/>
+        </pattern>
+        <pattern id="stripe" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+          <line x1="0" y1="0" x2="0" y2="8" stroke="#a9b1d6" stroke-width="2" opacity="0.15"/>
+        </pattern>
+        <pattern id="grid-fill" width="20" height="20" patternUnits="userSpaceOnUse">
+          <circle cx="10" cy="10" r="0.5" fill="#a9b1d6" opacity="0.5"/>
+        </pattern>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6 Z" fill="#a9b1d6"/>
+        </marker>
+      </defs>
+      <rect id="gridBg" width="5000" height="5000" x="-2500" y="-2500" fill="url(#grid)"/>
+      <g id="viewport">
+        <g id="connections"></g>
+        <g id="nodes"></g>
+      </g>
+    </svg>
+    
+    <!-- Temp line -->
+    <svg id="tempLine" class="absolute inset-0 w-full h-full pointer-events-none z-10" style="display:none;">
+      <path id="tempPath" fill="none" stroke="#7aa2f7" stroke-width="2.5"/>
+    </svg>
+    
+    <!-- Insert menu -->
+    <div id="insertMenu" class="absolute hidden bg-storm-bg2 border border-storm-fg/20 rounded-lg shadow-xl z-30 w-64 insert-menu">
+      <div class="p-2 border-b border-storm-fg/10">
+        <input type="text" id="insertSearch" placeholder="Search shapes..." 
+          class="w-full bg-storm-bg border border-storm-fg/20 rounded px-3 py-2 text-sm text-storm-fg" autofocus>
+      </div>
+      <div id="insertItems" class="p-2 space-y-1"></div>
+    </div>
+    
+    <!-- Zoom indicator -->
+    <div class="absolute bottom-4 right-4 bg-storm-bg2 px-3 py-1 rounded text-sm text-storm-fg/60">
+      <span id="zoomLevel">100%</span>
+    </div>
+  </main>
+
+  <script>
+    // State
+    let nodes = [];
+    let connections = [];
+    let selectedId = null;
+    let dragging = null;
+    let connecting = null;
+    let panning = false;
+    let panStart = { x: 0, y: 0 };
+    let viewBox = { x: 0, y: 0, w: 0, h: 0 };
+    let zoom = 1;
+    let idCounter = 0;
+    let history = [];
+    let historyIndex = -1;
+    let snapToGrid = true;
+    let clipboard = null;
+    
+    const canvas = document.getElementById('canvas');
+    const viewport = document.getElementById('viewport');
+    const nodesGroup = document.getElementById('nodes');
+    const connectionsGroup = document.getElementById('connections');
+    const tempLine = document.getElementById('tempLine');
+    const tempPath = document.getElementById('tempPath');
+    const nodeProps = document.getElementById('nodeProps');
+    const nodeLabelInput = document.getElementById('nodeLabel');
+    const insertMenu = document.getElementById('insertMenu');
+    const insertSearch = document.getElementById('insertSearch');
+    const insertItems = document.getElementById('insertItems');
+    const zoomLevel = document.getElementById('zoomLevel');
+    const gridBg = document.getElementById('gridBg');
+    
+    const COLORS = {
+      bg: '#1a1b26', bg2: '#24283b', fg: '#a9b1d6', accent: '#7aa2f7', border: '#414868',
+    };
+    
+    const GRID_SIZE = 20;
+    
+    const SHAPES = [
+      { type: 'pill', label: 'Pill', icon: '💊' },
+      { type: 'rect', label: 'Rectangle', icon: '▢' },
+      { type: 'container', label: 'Container', icon: '📦' },
+      { type: 'diamond', label: 'Diamond', icon: '◇' },
+      { type: 'circle', label: 'Circle', icon: '○' },
+    ];
+    
+    // Initialize
+    function init() {
+      const rect = canvas.getBoundingClientRect();
+      viewBox = { x: 0, y: 0, w: rect.width, h: rect.height };
+      updateViewBox();
+      loadFromStorage();
+      render();
+    }
+    
+    function generateId() { return 'n' + (++idCounter); }
+    
+    function snap(val) { return snapToGrid ? Math.round(val / GRID_SIZE) * GRID_SIZE : val; }
+    
+    function saveState() {
+      history = history.slice(0, historyIndex + 1);
+      history.push(JSON.stringify({ nodes, connections }));
+      historyIndex++;
+      if (history.length > 50) { history.shift(); historyIndex--; }
+      saveToStorage();
+    }
+    
+    function undo() {
+      if (historyIndex > 0) {
+        historyIndex--;
+        const state = JSON.parse(history[historyIndex]);
+        nodes = state.nodes;
+        connections = state.connections;
+        render();
+        saveToStorage();
+      }
+    }
+    
+    function redo() {
+      if (historyIndex < history.length - 1) {
+        historyIndex++;
+        const state = JSON.parse(history[historyIndex]);
+        nodes = state.nodes;
+        connections = state.connections;
+        render();
+        saveToStorage();
+      }
+    }
+    
+    function saveToStorage() {
+      localStorage.setItem('diagram-studio', JSON.stringify({ nodes, connections, idCounter }));
+    }
+    
+    function loadFromStorage() {
+      const saved = localStorage.getItem('diagram-studio');
+      if (saved) {
+        const data = JSON.parse(saved);
+        nodes = data.nodes || [];
+        connections = data.connections || [];
+        idCounter = data.idCounter || 0;
+      }
+      saveState();
+    }
+    
+    function updateViewBox() {
+      canvas.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+      zoomLevel.textContent = Math.round(1/zoom * 100) + '%';
+    }
+    
+    function screenToCanvas(x, y) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: viewBox.x + (x - rect.left) * (viewBox.w / rect.width),
+        y: viewBox.y + (y - rect.top) * (viewBox.h / rect.height)
+      };
+    }
+    
+    function addNode(type, x, y) {
+      const center = x !== undefined ? { x, y } : screenToCanvas(
+        canvas.getBoundingClientRect().width / 2,
+        canvas.getBoundingClientRect().height / 2
+      );
+      
+      const node = {
+        id: generateId(),
+        type,
+        x: snap(center.x + viewBox.x - 60 + Math.random() * 40),
+        y: snap(center.y + viewBox.y - 25 + Math.random() * 40),
+        width: type === 'container' ? 280 : type === 'circle' ? 80 : 120,
+        height: type === 'container' ? 180 : type === 'circle' ? 80 : type === 'diamond' ? 60 : 44,
+        label: type === 'container' ? 'Group' : 'Node',
+      };
+      nodes.push(node);
+      saveState();
+      render();
+      selectNode(node.id);
+      closeInsertMenu();
+    }
+    
+    function render() {
+      // Connections
+      connectionsGroup.innerHTML = connections.map(conn => {
+        const from = nodes.find(n => n.id === conn.from);
+        const to = nodes.find(n => n.id === conn.to);
+        if (!from || !to) return '';
+        
+        const [x1, y1] = getConnectorPos(from, conn.fromSide, conn.fromIdx);
+        const [x2, y2] = getConnectorPos(to, conn.toSide, conn.toIdx);
+        
+        const dist = Math.sqrt(Math.pow(x2-x1, 2) + Math.pow(y2-y1, 2));
+        const curveFactor = Math.max(50, dist * 0.4);
+        let path;
+        
+        // Control points based on connector side direction
+        const getOffset = (side, factor) => {
+          switch(side) {
+            case 'right': return { x: factor, y: 0 };
+            case 'left': return { x: -factor, y: 0 };
+            case 'bottom': return { x: 0, y: factor };
+            case 'top': return { x: 0, y: -factor };
+          }
+        };
+        
+        const off1 = getOffset(conn.fromSide, curveFactor);
+        const off2 = getOffset(conn.toSide, curveFactor);
+        
+        // Calculate arrow at end of curve
+        const cx1 = x1 + off1.x, cy1 = y1 + off1.y;
+        const cx2 = x2 + off2.x, cy2 = y2 + off2.y;
+        
+        // Get tangent angle at end point (derivative of bezier at t=1)
+        const tx = 3 * (x2 - cx2);
+        const ty = 3 * (y2 - cy2);
+        const angle = Math.atan2(ty, tx);
+        
+        // Arrow size
+        const aLen = 8, aWidth = 4;
+        const ax = x2 - Math.cos(angle) * aLen;
+        const ay = y2 - Math.sin(angle) * aLen;
+        const px = Math.cos(angle + Math.PI/2) * aWidth;
+        const py = Math.sin(angle + Math.PI/2) * aWidth;
+        
+        // Path without marker, arrow drawn manually
+        path = `M${x1},${y1} C${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}`;
+        const arrow = `M${x2},${y2} L${ax + px},${ay + py} L${ax - px},${ay - py} Z`;
+        
+        // Delete button at midpoint of curve
+        const midX = (x1 + cx1 + cx2 + x2) / 4;
+        const midY = (y1 + cy1 + cy2 + y2) / 4;
+        const deleteBtn = `<circle class="delete-btn" cx="${midX}" cy="${midY}" r="8" fill="${COLORS.bg2}" stroke="${COLORS.fg}" stroke-width="1" data-conn="${conn.id}"/>
+          <path class="delete-btn" d="M${midX-3},${midY-3} L${midX+3},${midY+3} M${midX+3},${midY-3} L${midX-3},${midY+3}" stroke="${COLORS.fg}" stroke-width="1.5" data-conn="${conn.id}" style="pointer-events:none"/>`;
+        
+        return `<g class="connection-group" data-id="${conn.id}"><path class="connection" d="${path}" fill="none" stroke="${COLORS.fg}" stroke-width="1.5"/><path d="${arrow}" fill="${COLORS.fg}"/>${deleteBtn}</g>`;
+      }).join('');
+      
+      // Nodes (containers first)
+      const sorted = [...nodes].sort((a, b) => (a.type === 'container' ? 0 : 1) - (b.type === 'container' ? 0 : 1));
+      
+      nodesGroup.innerHTML = sorted.map(node => {
+        const isSelected = node.id === selectedId;
+        const fillColor = node.color || COLORS.bg2;
+        const strokeColor = node.color || COLORS.fg;
+        const textColor = node.color ? '#1a1b26' : COLORS.fg;
+        let shape;
+        
+        // Get fill based on style
+        const getFill = (node, defaultStyle) => {
+          const style = node.fillStyle || defaultStyle;
+          let fill;
+          if (node.color) {
+            if (style === 'outline') fill = 'transparent';
+            else if (style === 'infill') fill = node.type === 'container' ? node.color + '25' : node.color;
+            else if (style === 'stripe') fill = `url(#stripe-${node.id})`;
+            else if (style === 'grid') fill = `url(#grid-${node.id})`;
+          } else {
+            if (style === 'outline') fill = 'transparent';
+            else if (style === 'infill') fill = node.type === 'container' ? COLORS.bg2 : COLORS.bg2;
+            else if (style === 'stripe') fill = 'url(#stripe)';
+            else if (style === 'grid') fill = 'url(#grid-fill)';
+          }
+          return { fill, style };
+        };
+        
+        // Create custom pattern if needed (stripe or grid)
+        const getCustomPattern = (node) => {
+          const style = node.fillStyle || (node.type === 'container' ? 'outline' : 'infill');
+          if (style === 'stripe' && node.color) {
+            return `<defs><pattern id="stripe-${node.id}" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+              <line x1="0" y1="0" x2="0" y2="8" stroke="${node.color}" stroke-width="2" opacity="0.4"/>
+            </pattern></defs>`;
+          }
+          if (style === 'grid' && node.color) {
+            return `<defs><pattern id="grid-${node.id}" width="20" height="20" patternUnits="userSpaceOnUse">
+              <circle cx="10" cy="10" r="0.5" fill="${node.color}" opacity="0.6"/>
+            </pattern></defs>`;
+          }
+          return '';
+        };
+        
+        if (node.type === 'container') {
+          const { fill } = getFill(node, 'outline');
+          const customPattern = getCustomPattern(node);
+          
+          // Container: fill area is non-interactive, only border/outline is clickable
+          shape = `${customPattern}<rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="8" 
+            fill="${fill}" stroke="none" class="container-fill"/>
+            <rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="8" 
+            fill="none" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
+            <text x="${node.x + 12}" y="${node.y + 22}" fill="${node.color || COLORS.fg}" font-size="13" font-weight="600" style="pointer-events:none">${esc(node.label)}</text>`;
+        } else if (node.type === 'diamond') {
+          const { fill, style } = getFill(node, 'infill');
+          const customPattern = getCustomPattern(node);
+          const cx = node.x + node.width / 2, cy = node.y + node.height / 2;
+          const txtColor = style === 'outline' ? (node.color || COLORS.fg) : textColor;
+          shape = `${customPattern}<polygon points="${cx},${node.y} ${node.x + node.width},${cy} ${cx},${node.y + node.height} ${node.x},${cy}" 
+            fill="${fill}" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
+            <text x="${cx}" y="${cy + 4}" fill="${txtColor}" font-size="12" text-anchor="middle">${esc(node.label)}</text>`;
+        } else if (node.type === 'circle') {
+          const { fill, style } = getFill(node, 'infill');
+          const customPattern = getCustomPattern(node);
+          const cx = node.x + node.width / 2, cy = node.y + node.height / 2;
+          const txtColor = style === 'outline' ? (node.color || COLORS.fg) : textColor;
+          shape = `${customPattern}<circle cx="${cx}" cy="${cy}" r="${node.width / 2}" 
+            fill="${fill}" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
+            <text x="${cx}" y="${cy + 4}" fill="${txtColor}" font-size="12" text-anchor="middle">${esc(node.label)}</text>`;
+        } else {
+          const { fill, style } = getFill(node, 'infill');
+          const customPattern = getCustomPattern(node);
+          const rx = node.type === 'pill' ? node.height / 2 : 6;
+          const txtColor = style === 'outline' ? (node.color || COLORS.fg) : textColor;
+          shape = `${customPattern}<rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="${rx}" 
+            fill="${fill}" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
+            <text x="${node.x + node.width/2}" y="${node.y + node.height/2 + 4}" fill="${txtColor}" font-size="12" text-anchor="middle">${esc(node.label)}</text>`;
+        }
+        
+        return `<g class="node ${isSelected ? 'selected' : ''}" data-id="${node.id}">
+          ${shape}
+          ${renderConnectors(node)}
+          ${isSelected ? `<rect class="resize-handle" x="${node.x + node.width - 8}" y="${node.y + node.height - 8}" width="8" height="8" fill="${COLORS.accent}" rx="2"/>` : ''}
+        </g>`;
+      }).join('');
+      
+      // Bind events
+      document.querySelectorAll('.node').forEach(el => {
+        el.addEventListener('mousedown', onNodeMouseDown);
+        el.addEventListener('dblclick', onNodeDblClick);
+      });
+      document.querySelectorAll('.connector').forEach(el => el.addEventListener('mousedown', onConnectorMouseDown));
+      document.querySelectorAll('.resize-handle').forEach(el => el.addEventListener('mousedown', onResizeMouseDown));
+      document.querySelectorAll('.delete-btn').forEach(el => el.addEventListener('click', onConnectionDelete));
+    }
+    
+    function renderConnectors(node) {
+      const connectors = [];
+      const offsets = [0.25, 0.5, 0.75]; // 3 points per side
+      
+      // Top edge
+      offsets.forEach((off, i) => {
+        const x = node.x + node.width * off;
+        connectors.push({ x, y: node.y, side: 'top', idx: i });
+      });
+      // Bottom edge
+      offsets.forEach((off, i) => {
+        const x = node.x + node.width * off;
+        connectors.push({ x, y: node.y + node.height, side: 'bottom', idx: i });
+      });
+      // Left edge
+      offsets.forEach((off, i) => {
+        const y = node.y + node.height * off;
+        connectors.push({ x: node.x, y, side: 'left', idx: i });
+      });
+      // Right edge
+      offsets.forEach((off, i) => {
+        const y = node.y + node.height * off;
+        connectors.push({ x: node.x + node.width, y, side: 'right', idx: i });
+      });
+      
+      return connectors.map(c => 
+        `<circle class="connector" cx="${c.x}" cy="${c.y}" r="4" fill="${COLORS.bg2}" stroke="${COLORS.fg}" stroke-width="1" data-node="${node.id}" data-side="${c.side}" data-idx="${c.idx}"/>`
+      ).join('');
+    }
+    
+    function getConnectorPos(node, side, idx = 1) {
+      const offsets = [0.25, 0.5, 0.75];
+      const off = offsets[idx] || 0.5;
+      
+      switch(side) {
+        case 'top': return [node.x + node.width * off, node.y];
+        case 'bottom': return [node.x + node.width * off, node.y + node.height];
+        case 'left': return [node.x, node.y + node.height * off];
+        case 'right': return [node.x + node.width, node.y + node.height * off];
+      }
+    }
+    
+    function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    
+    function selectNode(id) {
+      selectedId = id;
+      const node = nodes.find(n => n.id === id);
+      if (node) {
+        nodeProps.classList.remove('hidden');
+        nodeLabelInput.value = node.label;
+        
+        // Highlight active fill style
+        const defaultStyle = node.type === 'container' ? 'outline' : 'infill';
+        document.querySelectorAll('.fill-style-btn').forEach(btn => {
+          const isActive = btn.dataset.style === (node.fillStyle || defaultStyle);
+          btn.classList.toggle('active', isActive);
+        });
+      } else {
+        nodeProps.classList.add('hidden');
+      }
+      render();
+    }
+    
+    function deleteSelected() {
+      if (selectedId) {
+        nodes = nodes.filter(n => n.id !== selectedId);
+        connections = connections.filter(c => c.from !== selectedId && c.to !== selectedId);
+        selectedId = null;
+        nodeProps.classList.add('hidden');
+        saveState();
+        render();
+      }
+    }
+    
+    function setNodeColor(color) {
+      const node = nodes.find(n => n.id === selectedId);
+      if (node) {
+        node.color = color;
+        saveState();
+        render();
+      }
+    }
+    
+    function setFillStyle(style) {
+      const node = nodes.find(n => n.id === selectedId);
+      if (node) {
+        node.fillStyle = style;
+        // Update button highlights
+        document.querySelectorAll('.fill-style-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.style === style);
+        });
+        saveState();
+        render();
+      }
+    }
+    
+    function duplicateSelected() {
+      const node = nodes.find(n => n.id === selectedId);
+      if (node) {
+        const newNode = { ...node, id: generateId(), x: node.x + 20, y: node.y + 20 };
+        nodes.push(newNode);
+        saveState();
+        render();
+        selectNode(newNode.id);
+      }
+    }
+    
+    function clearCanvas() {
+      if (confirm('Clear entire canvas?')) {
+        nodes = [];
+        connections = [];
+        selectedId = null;
+        saveState();
+        render();
+      }
+    }
+    
+    function toggleGrid() {
+      snapToGrid = document.getElementById('gridToggle').checked;
+      gridBg.style.display = snapToGrid ? 'block' : 'none';
+    }
+    
+    // Event handlers
+    function onNodeMouseDown(e) {
+      if (e.target.classList.contains('connector') || e.target.classList.contains('resize-handle')) return;
+      const id = e.currentTarget.dataset.id;
+      let node = nodes.find(n => n.id === id);
+      if (!node) return;
+      
+      // Alt/Option + drag = duplicate
+      if (e.altKey) {
+        const newNode = { ...node, id: generateId(), x: node.x, y: node.y };
+        nodes.push(newNode);
+        node = newNode; // Drag the new copy
+        saveState();
+        render();
+      }
+      
+      selectNode(node.id);
+      const pos = screenToCanvas(e.clientX, e.clientY);
+      dragging = { node, offsetX: pos.x - node.x, offsetY: pos.y - node.y };
+      e.preventDefault();
+    }
+    
+    function onNodeDblClick(e) {
+      if (e.target.classList.contains('connector') || e.target.classList.contains('resize-handle')) return;
+      const id = e.currentTarget.dataset.id;
+      const node = nodes.find(n => n.id === id);
+      if (!node) return;
+      
+      // Focus the label input and select all
+      selectNode(id);
+      nodeLabelInput.focus();
+      nodeLabelInput.select();
+    }
+    
+    function onConnectionDelete(e) {
+      const connId = e.target.dataset.conn;
+      if (connId) {
+        connections = connections.filter(c => c.id !== connId);
+        saveState();
+        render();
+      }
+      e.stopPropagation();
+    }
+    
+    function onConnectorMouseDown(e) {
+      connecting = { 
+        from: e.target.dataset.node, 
+        fromSide: e.target.dataset.side,
+        fromIdx: parseInt(e.target.dataset.idx) || 1
+      };
+      tempLine.style.display = 'block';
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    let resizing = null;
+    function onResizeMouseDown(e) {
+      const node = nodes.find(n => n.id === selectedId);
+      if (node) {
+        resizing = { node, startW: node.width, startH: node.height, startX: e.clientX, startY: e.clientY };
+      }
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.target === canvas || e.target.id === 'gridBg') {
+        selectNode(null);
+        panning = true;
+        panStart = { x: e.clientX, y: e.clientY };
+        canvas.style.cursor = 'grabbing';
+      }
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      const pos = screenToCanvas(e.clientX, e.clientY);
+      
+      if (dragging) {
+        dragging.node.x = snap(pos.x - dragging.offsetX);
+        dragging.node.y = snap(pos.y - dragging.offsetY);
+        render();
+      }
+      
+      if (resizing) {
+        const dx = e.clientX - resizing.startX;
+        const dy = e.clientY - resizing.startY;
+        resizing.node.width = Math.max(60, snap(resizing.startW + dx / zoom));
+        resizing.node.height = Math.max(40, snap(resizing.startH + dy / zoom));
+        render();
+      }
+      
+      if (connecting) {
+        const fromNode = nodes.find(n => n.id === connecting.from);
+        const [x1, y1] = getConnectorPos(fromNode, connecting.fromSide, connecting.fromIdx);
+        const dist = Math.sqrt(Math.pow(pos.x-x1, 2) + Math.pow(pos.y-y1, 2));
+        const curveFactor = Math.max(50, dist * 0.4);
+        
+        const getOff = (side, f) => {
+          switch(side) {
+            case 'right': return { x: f, y: 0 };
+            case 'left': return { x: -f, y: 0 };
+            case 'bottom': return { x: 0, y: f };
+            case 'top': return { x: 0, y: -f };
+          }
+        };
+        const off = getOff(connecting.fromSide, curveFactor);
+        const path = `M${x1},${y1} C${x1 + off.x},${y1 + off.y} ${pos.x},${pos.y} ${pos.x},${pos.y}`;
+        tempPath.setAttribute('d', path);
+      }
+      
+      if (panning) {
+        const dx = (e.clientX - panStart.x) * zoom;
+        const dy = (e.clientY - panStart.y) * zoom;
+        viewBox.x -= dx;
+        viewBox.y -= dy;
+        panStart = { x: e.clientX, y: e.clientY };
+        updateViewBox();
+      }
+    });
+    
+    document.addEventListener('mouseup', (e) => {
+      if (dragging) { saveState(); dragging = null; }
+      if (resizing) { saveState(); resizing = null; }
+      
+      if (connecting) {
+        const target = document.elementFromPoint(e.clientX, e.clientY);
+        if (target?.classList.contains('connector')) {
+          const toId = target.dataset.node;
+          if (toId !== connecting.from) {
+            connections.push({ 
+              id: 'c' + Date.now(), 
+              from: connecting.from, 
+              fromSide: connecting.fromSide,
+              fromIdx: connecting.fromIdx,
+              to: toId, 
+              toSide: target.dataset.side,
+              toIdx: parseInt(target.dataset.idx) || 1
+            });
+            saveState();
+            render();
+          }
+        }
+        connecting = null;
+        tempLine.style.display = 'none';
+      }
+      
+      if (panning) { panning = false; canvas.style.cursor = 'default'; }
+    });
+    
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      const delta = e.deltaY > 0 ? 1.1 : 0.9;
+      const newZoom = Math.min(Math.max(zoom * delta, 0.25), 4);
+      
+      const wx = viewBox.x + mouseX * zoom;
+      const wy = viewBox.y + mouseY * zoom;
+      
+      zoom = newZoom;
+      viewBox.w = rect.width * zoom;
+      viewBox.h = rect.height * zoom;
+      viewBox.x = wx - mouseX * zoom;
+      viewBox.y = wy - mouseY * zoom;
+      
+      updateViewBox();
+    }, { passive: false });
+    
+    // Insert menu
+    function showInsertMenu(x, y) {
+      insertMenu.style.left = x + 'px';
+      insertMenu.style.top = y + 'px';
+      insertMenu.classList.remove('hidden');
+      insertSearch.value = '';
+      insertSearch.focus();
+      renderInsertItems('');
+    }
+    
+    function closeInsertMenu() { insertMenu.classList.add('hidden'); }
+    
+    function renderInsertItems(filter) {
+      const filtered = SHAPES.filter(s => s.label.toLowerCase().includes(filter.toLowerCase()));
+      insertItems.innerHTML = filtered.map(s => 
+        `<button onclick="addNode('${s.type}')" class="w-full text-left px-3 py-2 rounded hover:bg-storm-accent/20 text-sm text-storm-fg flex items-center gap-2">
+          <span>${s.icon}</span> ${s.label}
+        </button>`
+      ).join('');
+    }
+    
+    insertSearch.addEventListener('input', (e) => renderInsertItems(e.target.value));
+    insertSearch.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeInsertMenu();
+      if (e.key === 'Enter') {
+        const first = insertItems.querySelector('button');
+        if (first) first.click();
+      }
+    });
+    
+    document.addEventListener('click', (e) => {
+      if (!insertMenu.contains(e.target)) closeInsertMenu();
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      
+      if (e.key === '/') { e.preventDefault(); showInsertMenu(100, 100); }
+      if (e.key === 'Delete' || e.key === 'Backspace') { deleteSelected(); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) { e.preventDefault(); redo(); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c') { 
+        const node = nodes.find(n => n.id === selectedId);
+        if (node) clipboard = JSON.stringify(node);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'v' && clipboard) {
+        const node = JSON.parse(clipboard);
+        node.id = generateId();
+        node.x += 20;
+        node.y += 20;
+        nodes.push(node);
+        saveState();
+        render();
+        selectNode(node.id);
+      }
+    });
+    
+    nodeLabelInput.addEventListener('input', (e) => {
+      const node = nodes.find(n => n.id === selectedId);
+      if (node) { node.label = e.target.value; render(); }
+    });
+    
+    nodeLabelInput.addEventListener('change', saveState);
+    
+    // Export
+    function downloadSVG() {
+      const clone = canvas.cloneNode(true);
+      clone.querySelectorAll('.connector, .resize-handle').forEach(el => el.remove());
+      clone.querySelector('#gridBg').remove();
+      const blob = new Blob([clone.outerHTML], { type: 'image/svg+xml' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'diagram.svg';
+      a.click();
+    }
+    
+    function downloadPNG() {
+      const clone = canvas.cloneNode(true);
+      clone.querySelectorAll('.connector, .resize-handle').forEach(el => el.remove());
+      clone.querySelector('#gridBg').remove();
+      
+      const svgData = new XMLSerializer().serializeToString(clone);
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = viewBox.w * 2;
+        c.height = viewBox.h * 2;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = COLORS.bg;
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        const a = document.createElement('a');
+        a.href = c.toDataURL('image/png');
+        a.download = 'diagram.png';
+        a.click();
+      };
+      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    }
+    
+    // Init
+    window.addEventListener('resize', () => {
+      const rect = canvas.getBoundingClientRect();
+      viewBox.w = rect.width * zoom;
+      viewBox.h = rect.height * zoom;
+      updateViewBox();
+    });
+    
+    init();
+  </script>
+</body>
+</html>
