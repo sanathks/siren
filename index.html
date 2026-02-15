@@ -36,11 +36,11 @@
     .connector { cursor: crosshair; opacity: 0; pointer-events: none; transition: opacity 0.15s; }
     .node:hover .connector { opacity: 0.4; pointer-events: auto; }
     .show-connectors .connector { opacity: 0.4; pointer-events: auto; }
-    .show-connectors .lifeline-connector { opacity: 0.4; pointer-events: auto; }
+    .show-connectors .lifeline-connector { opacity: 0.6; pointer-events: auto; }
     .connector:hover { opacity: 1; fill: #7aa2f7 !important; }
-    .lifeline-connector { opacity: 0; transition: opacity 0.15s; pointer-events: auto; }
-    .node:hover .lifeline-connector { opacity: 0.3; }
-    .lifeline-connector:hover { opacity: 1 !important; fill: rgba(122, 162, 247, 0.3) !important; }
+    .lifeline-connector { opacity: 0; transition: opacity 0.15s, transform 0.15s; pointer-events: auto; }
+    .node:hover .lifeline-connector { opacity: 0.5; }
+    .lifeline-connector:hover { opacity: 1 !important; }
     .connection { pointer-events: stroke; cursor: pointer; stroke-linecap: round; }
     .connection-group { cursor: pointer; }
     .conn-hit { pointer-events: stroke; cursor: pointer; }
@@ -1203,13 +1203,13 @@
                   stroke="${COLORS.border}" stroke-width="1.5" stroke-dasharray="6,4"/>
           `;
           
-          // Add invisible connection zones along the lifeline (every 40px)
-          // Start zones 30px below the node to avoid overlap
-          const zoneSpacing = 40;
+          // Add connection points along the lifeline (every 35px)
+          // Start points 30px below the node to avoid overlap
+          const zoneSpacing = 35;
           for (let y = lifeY1 + 30; y < lifeY2 - 20; y += zoneSpacing) {
             lifeline += `
-              <rect class="lifeline-connector" x="${lifeX - 8}" y="${y - 8}" width="16" height="16" 
-                    fill="transparent" style="cursor:crosshair" 
+              <circle class="lifeline-connector" cx="${lifeX}" cy="${y}" r="6"
+                    fill="${COLORS.accent}" style="cursor:crosshair" 
                     data-node="${node.id}" data-lifeline-y="${y}" data-side="bottom"/>
             `;
           }
