@@ -88,7 +88,7 @@
   <header class="h-14 flex items-center px-4 z-20 absolute top-0 left-0 right-0" style="background:transparent;pointer-events:none">
     <!-- Left: Logo -->
     <div class="flex items-center" style="pointer-events:auto">
-      <img src="favicon-32.png" alt="Siren" style="width:28px;height:28px">
+      <img src="favicon-32.png" alt="Siren" style="width:36px;height:36px">
     </div>
     
     <!-- Center: All Tools -->
@@ -209,8 +209,11 @@
   <main class="flex-1 flex overflow-hidden">
     <!-- Mermaid Code Sidebar (Left) -->
     <div id="mermaidSidebar" class="hidden" style="width:320px;background:#1a1b26;border-right:1px solid #414868;display:flex;flex-direction:column">
-      <div style="padding:8px 12px;border-bottom:1px solid #414868;display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:12px;font-weight:600;color:#a9b1d6">Mermaid</span>
+      <div style="padding:10px 12px;border-bottom:1px solid #414868;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <img src="favicon-32.png" alt="Siren" style="width:24px;height:24px">
+          <span style="font-size:13px;font-weight:600;color:#a9b1d6">Mermaid</span>
+        </div>
         <div style="display:flex;gap:4px;align-items:center">
           <button onclick="exportMermaid()" style="padding:4px 8px;background:#24283b;border:1px solid #414868;border-radius:4px;font-size:10px;font-weight:600;color:#a9b1d6;cursor:pointer" title="Export diagram to code">Export</button>
           <button onclick="importMermaid()" style="padding:4px 8px;background:#7aa2f7;border:none;border-radius:4px;font-size:10px;font-weight:600;color:#1a1b26;cursor:pointer" title="Import code to diagram (Ctrl+Enter)">Import</button>
