@@ -2544,8 +2544,8 @@
       const cropH = (bounds.maxY - bounds.minY) + padding * 2;
       
       const clone = canvas.cloneNode(true);
-      clone.querySelectorAll('.connector, .resize-handle, #selectBox, #drawPreview').forEach(el => el.remove());
-      clone.querySelector('#gridBg').remove();
+      clone.querySelectorAll('.connector, .resize-handle, #selectBox, #drawPreview, .lifeline-connector, .line-handle, .conn-hit').forEach(el => el.remove());
+      clone.querySelector('#gridBg')?.remove();
       
       // Set viewBox and dimensions to cropped area
       clone.setAttribute('viewBox', `${cropX} ${cropY} ${cropW} ${cropH}`);
