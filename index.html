@@ -834,7 +834,7 @@
           ` : '';
           
           return `<g class="connection-group ${isConnSelected ? 'selected' : ''}" data-id="${conn.id}" data-conn="${conn.id}" style="cursor:pointer">
-            <line class="conn-hit" x1="${fromX}" y1="${y}" x2="${toX}" y2="${y}" stroke="rgba(128,128,128,0.001)" stroke-width="20" data-conn="${conn.id}"/>
+            <line class="conn-hit" x1="${fromX}" y1="${y}" x2="${toX}" y2="${y}" stroke="transparent" stroke-width="25" data-conn="${conn.id}" style="pointer-events:stroke"/>
             <line x1="${fromX}" y1="${y}" x2="${arrowX}" y2="${y}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-dasharray="${dashArray}" class="connection"/>
             <path d="${arrowPath}" fill="${isAsync ? 'none' : strokeColor}" stroke="${strokeColor}" stroke-width="1.5"/>
             ${labelEl}
@@ -1307,20 +1307,33 @@
       const toNode = nodes.find(n => n.id === conn.to);
       if (!fromNode || !toNode) return;
       
-      // Calculate midpoint of connection
-      const midX = (fromNode.x + fromNode.width/2 + toNode.x + toNode.width/2) / 2;
-      const midY = (fromNode.y + fromNode.height/2 + toNode.y + toNode.height/2) / 2;
+      let midX, midY;
+      
+      if (conn.isSequenceMessage) {
+        // For sequence messages, use the actual message Y position
+        const fromX = fromNode.x + fromNode.width / 2;
+        const toX = toNode.x + toNode.width / 2;
+        midX = (fromX + toX) / 2;
+        midY = conn.messageY || 150;
+      } else {
+        // Regular connection - use node centers
+        midX = (fromNode.x + fromNode.width/2 + toNode.x + toNode.width/2) / 2;
+        midY = (fromNode.y + fromNode.height/2 + toNode.y + toNode.height/2) / 2;
+      }
       
       // Convert to screen coordinates
-      const rect = canvas.getBoundingClientRect();
-      const screenX = (midX - viewBox.x) / zoom + rect.left;
-      const screenY = (midY - viewBox.y) / zoom + rect.top - 50;
+      const canvasContainer = document.getElementById('canvasContainer');
+      const containerRect = canvasContainer.getBoundingClientRect();
+      const scaleX = containerRect.width / viewBox.w;
+      const screenX = (midX - viewBox.x) * scaleX;
+      const screenY = (midY - viewBox.y) * scaleX - 50;
       
       connLabelInput.value = conn.label || '';
       document.getElementById('connColorBtn').style.borderColor = conn.color || '#a9b1d6';
       
-      connToolbar.style.left = `${screenX}px`;
-      connToolbar.style.top = `${screenY}px`;
+      // Position relative to canvas container
+      connToolbar.style.left = `${Math.max(100, Math.min(screenX, containerRect.width - 150))}px`;
+      connToolbar.style.top = `${Math.max(10, screenY)}px`;
       connToolbar.style.transform = 'translateX(-50%)';
       connToolbar.classList.remove('hidden');
     }
