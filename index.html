@@ -572,10 +572,12 @@
     
     function loadFromUrl() {
       const hash = window.location.hash.slice(1);
+      console.log('loadFromUrl called, hash length:', hash?.length || 0);
       if (!hash) return;
       try {
         const json = decodeURIComponent(atob(hash));
         const data = JSON.parse(json);
+        console.log('Parsed data:', { nodesCount: data.n?.length, hasViewport: !!data.v });
         nodes = data.n || [];
         connections = data.c || [];
         idCounter = Math.max(...nodes.map(n => parseInt(n.id.slice(1)) || 0), 0) + 1;
@@ -602,7 +604,10 @@
           const centerY = (minY + maxY) / 2;
           viewBox.x = centerX - viewBox.w / 2;
           viewBox.y = centerY - viewBox.h / 2;
+          console.log('Auto-center:', { centerX, centerY, viewBox: {...viewBox}, nodes: nodes.length });
           updateViewBox();
+        } else {
+          console.log('No auto-center: nodes.length=', nodes.length, 'data.v=', false);
         }
       } catch (e) {
         console.error('Failed to load from URL:', e);
