@@ -112,6 +112,20 @@
             <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/>
           </svg>
         </button>
+        <!-- Arrange -->
+        <button class="tool-btn" onclick="arrangeDiagram()" title="Auto-Arrange (A)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/>
+            <rect x="9" y="15" width="6" height="6" rx="1"/>
+            <path d="M6 9v3h3M18 9v3h-3M12 15v-3"/>
+          </svg>
+        </button>
+        <!-- Code toggle -->
+        <button id="mermaidToggle" class="tool-btn" onclick="toggleMermaidSidebar()" title="Mermaid Code (M)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </button>
         <div class="divider"></div>
         <!-- Shape tools -->
         <button class="tool-btn" id="tool-rect" onclick="setTool('rect')" title="Rectangle (1)">
@@ -136,20 +150,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="5" y1="19" x2="19" y2="5"/>
             <polyline points="12 5 19 5 19 12"/>
-          </svg>
-        </button>
-        <!-- Arrange -->
-        <button class="tool-btn" onclick="arrangeDiagram()" title="Auto-Arrange (A)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/>
-            <rect x="9" y="15" width="6" height="6" rx="1"/>
-            <path d="M6 9v3h3M18 9v3h-3M12 15v-3"/>
-          </svg>
-        </button>
-        <!-- Code toggle -->
-        <button id="mermaidToggle" class="tool-btn" onclick="toggleMermaidSidebar()" title="Mermaid Code (M)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
           </svg>
         </button>
         <div class="divider"></div>
