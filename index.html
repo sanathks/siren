@@ -725,7 +725,11 @@
       
       // Render sequence diagram frames (loop, alt, etc.)
       const messageSpacing = 50;
-      const startY = 120;
+      // Calculate startY based on actual participant node positions
+      const maxParticipantBottom = sequenceParticipants.length > 0 
+        ? Math.max(...sequenceParticipants.map(n => n.y + n.height)) 
+        : 140;
+      const startY = maxParticipantBottom + 30;
       const framesSvg = sequenceFrames.map(frame => {
         if (frame.startIndex === undefined || frame.endIndex === undefined) return '';
         if (frame.endIndex < frame.startIndex) return '';
@@ -1130,8 +1134,9 @@
           `;
           
           // Add invisible connection zones along the lifeline (every 40px)
+          // Start zones 30px below the node to avoid overlap
           const zoneSpacing = 40;
-          for (let y = lifeY1 + 20; y < lifeY2 - 20; y += zoneSpacing) {
+          for (let y = lifeY1 + 30; y < lifeY2 - 20; y += zoneSpacing) {
             lifeline += `
               <rect class="lifeline-connector" x="${lifeX - 8}" y="${y - 8}" width="16" height="16" 
                     fill="transparent" style="cursor:crosshair" 
@@ -2829,7 +2834,12 @@
         if (isSequence) {
           // Sequence diagram: messages at different Y levels
           const messageSpacing = 50;
-          const startY = 120; // Below participant boxes
+          // Calculate startY based on actual node positions (below the tallest node)
+          const participantNodes = nodes.filter(n => n.isParticipant || n.hasLifeline);
+          const maxNodeBottom = participantNodes.length > 0 
+            ? Math.max(...participantNodes.map(n => n.y + n.height)) 
+            : 140;
+          const startY = maxNodeBottom + 30; // 30px padding below nodes
           
           parsed.connections.forEach((c, idx) => {
             if (idMap[c.from] && idMap[c.to]) {
