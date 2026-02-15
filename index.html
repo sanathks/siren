@@ -558,7 +558,8 @@
         history.replaceState(null, '', window.location.pathname);
         return;
       }
-      const data = { n: nodes, c: connections };
+      // Save viewport position along with diagram data
+      const data = { n: nodes, c: connections, v: { x: viewBox.x, y: viewBox.y, z: zoom } };
       const json = JSON.stringify(data);
       const encoded = btoa(encodeURIComponent(json));
       history.replaceState(null, '', '#' + encoded);
@@ -573,6 +574,16 @@
         nodes = data.n || [];
         connections = data.c || [];
         idCounter = Math.max(...nodes.map(n => parseInt(n.id.slice(1)) || 0), 0) + 1;
+        // Restore viewport position if saved
+        if (data.v) {
+          const rect = canvas.getBoundingClientRect();
+          viewBox.x = data.v.x || 0;
+          viewBox.y = data.v.y || 0;
+          zoom = data.v.z || 1;
+          viewBox.w = rect.width * zoom;
+          viewBox.h = rect.height * zoom;
+          updateViewBox();
+        }
       } catch (e) {
         console.error('Failed to load from URL:', e);
       }
@@ -2294,8 +2305,11 @@
         render();
       }
       
-      if (panning) { panning = false; canvas.style.cursor = 'default'; }
+      if (panning) { panning = false; canvas.style.cursor = 'default'; updateUrlHash(); }
     });
+    
+    // Debounced URL update for zoom
+    let zoomUrlTimer = null;
     
     // Zoom
     canvas.addEventListener('wheel', (e) => {
@@ -2313,6 +2327,9 @@
       viewBox.x = wx - mouseX * zoom;
       viewBox.y = wy - mouseY * zoom;
       updateViewBox();
+      // Debounce URL update for zoom
+      clearTimeout(zoomUrlTimer);
+      zoomUrlTimer = setTimeout(updateUrlHash, 300);
     }, { passive: false });
     
     // Keyboard shortcuts
