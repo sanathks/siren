@@ -399,6 +399,16 @@
           </div>
         </div>
         
+        <!-- Line style: solid/dotted -->
+        <div class="flex items-center gap-1">
+          <button id="connSolidBtn" onclick="setConnLineStyle('solid')" title="Solid line" style="width:28px;height:28px;background:#1a1b26;border:2px solid transparent;border-radius:4px;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 24 6" style="width:20px;height:6px"><line x1="2" y1="3" x2="22" y2="3" stroke="#a9b1d6" stroke-width="2"/></svg>
+          </button>
+          <button id="connDottedBtn" onclick="setConnLineStyle('dashed')" title="Dotted line" style="width:28px;height:28px;background:#1a1b26;border:2px solid transparent;border-radius:4px;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 24 6" style="width:20px;height:6px"><line x1="2" y1="3" x2="22" y2="3" stroke="#a9b1d6" stroke-width="2" stroke-dasharray="4,3"/></svg>
+          </button>
+        </div>
+        
         <button onclick="deleteSelectedConn()" title="Delete" style="width:28px;height:28px;background:rgba(247,118,142,0.2);border:none;border-radius:4px;color:#f7768e;display:flex;align-items:center;justify-content:center">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px">
             <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -1340,6 +1350,7 @@
       
       connLabelInput.value = conn.label || '';
       document.getElementById('connColorBtn').style.borderColor = conn.color || '#a9b1d6';
+      updateConnLineStyleBtns(conn.lineStyle || 'solid');
       
       // Position relative to canvas container
       connToolbar.style.left = `${Math.max(100, Math.min(screenX, containerRect.width - 150))}px`;
@@ -1385,6 +1396,23 @@
         saveState();
         render();
       }
+    }
+    
+    function setConnLineStyle(style) {
+      const conn = connections.find(c => c.id === selectedConnId);
+      if (conn) {
+        conn.lineStyle = style;
+        updateConnLineStyleBtns(style);
+        saveState();
+        render();
+      }
+    }
+    
+    function updateConnLineStyleBtns(style) {
+      const solidBtn = document.getElementById('connSolidBtn');
+      const dottedBtn = document.getElementById('connDottedBtn');
+      solidBtn.style.borderColor = style === 'dashed' ? 'transparent' : '#7aa2f7';
+      dottedBtn.style.borderColor = style === 'dashed' ? '#7aa2f7' : 'transparent';
     }
     
     // Update connection label on input
