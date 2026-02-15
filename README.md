@@ -56,8 +56,7 @@ Already have diagrams in Mermaid? Import them, edit visually, export back to cod
 
 **Local:**
 ```bash
-# Clone and run
-git clone https://github.com/sanathsamarasinghe/siren.git
+git clone https://github.com/user/siren.git
 cd siren
 npx serve
 ```
@@ -74,29 +73,6 @@ Or just download `index.html` and open it.
 | `M` | Mermaid editor |
 | `Ctrl+Z/Y` | Undo/Redo |
 | `Delete` | Delete selected |
-
-## Lightweight by Design
-
-**~3,200 lines. One HTML file. No build step.**
-
-- Loads instantly
-- Works offline  
-- Fork it, hack it, host it yourself
-
-## Deploy Your Own
-
-Works on any static host:
-
-```bash
-# Netlify
-netlify deploy --prod --dir=.
-
-# Vercel
-vercel
-
-# GitHub Pages
-# Just push index.html to your repo
-```
 
 ## License
 
