@@ -243,5 +243,26 @@ Here's your diagram: [returned URL]
 
 ## MCP Server
 
-For Claude Desktop integration, Siren also provides an MCP server.
-See: https://github.com/sanathks/siren/tree/main/mcp
+For Claude Desktop integration, Siren provides an MCP server at:
+
+```
+https://siren.sanath.dev/mcp
+```
+
+Add to your Claude Desktop config:
+
+```json
+{
+  "mcpServers": {
+    "siren": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://siren.sanath.dev/mcp"]
+    }
+  }
+}
+```
+
+Available tools:
+- `create_diagram` - Create from Mermaid code
+- `create_diagram_json` - Create from JSON nodes/connections
+- `export_diagram_image` - Export as PNG
