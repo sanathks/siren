@@ -19,6 +19,7 @@
 
 - **Instant** - Opens in milliseconds, works offline
 - **Visual** - Drag, connect, style - everything editable on canvas
+- **Mermaid support** - Paste Mermaid code, get editable visual diagram
 - **Shareable** - Short URLs for any diagram (`/d/abc123`)
 - **AI-native** - API + MCP server for LLM integrations
 
