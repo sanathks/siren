@@ -180,6 +180,14 @@
             <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
           </svg>
         </button>
+        <!-- Arrange -->
+        <button class="tool-btn" onclick="arrangeDiagram()" title="Auto-Arrange (A)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/>
+            <rect x="9" y="15" width="6" height="6" rx="1"/>
+            <path d="M6 9v3h3M18 9v3h-3M12 15v-3"/>
+          </svg>
+        </button>
         <!-- Clear -->
         <button class="tool-btn" style="background:rgba(247,118,142,0.15);color:#f7768e" onclick="clearCanvas()" title="Clear Canvas">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1515,6 +1523,195 @@
       }
     }
     
+    // Smart auto-arrange based on diagram type
+    function arrangeDiagram() {
+      if (nodes.length === 0) return;
+      
+      // Detect diagram type
+      const hasLifelines = nodes.some(n => n.hasLifeline || n.isParticipant);
+      const hasClasses = nodes.some(n => n.isClass);
+      const hasSequenceMessages = connections.some(c => c.isSequenceMessage);
+      
+      if (hasLifelines || hasSequenceMessages) {
+        arrangeSequence();
+      } else if (hasClasses) {
+        arrangeClass();
+      } else {
+        arrangeFlowchart();
+      }
+      
+      saveState();
+      render();
+      
+      // Center view on arranged content
+      const bounds = getContentBounds();
+      if (bounds) {
+        viewBox.x = bounds.minX - 50;
+        viewBox.y = bounds.minY - 50;
+        updateViewBox();
+      }
+    }
+    
+    // Arrange sequence diagram - horizontal alignment, even spacing
+    function arrangeSequence() {
+      const participants = nodes.filter(n => n.hasLifeline || n.isParticipant);
+      const otherNodes = nodes.filter(n => !n.hasLifeline && !n.isParticipant);
+      
+      if (participants.length === 0) return;
+      
+      // Sort participants by current X position to preserve order
+      participants.sort((a, b) => a.x - b.x);
+      
+      // Align all participants at same Y, distribute X evenly
+      const startX = 100;
+      const startY = 100;
+      const spacingX = 150;
+      
+      participants.forEach((node, i) => {
+        node.x = startX + i * spacingX;
+        node.y = startY;
+      });
+      
+      // Re-calculate sequence message Y positions to be evenly spaced below participants
+      const seqMessages = connections.filter(c => c.isSequenceMessage);
+      if (seqMessages.length > 0) {
+        // Sort by current messageY to preserve order
+        seqMessages.sort((a, b) => (a.messageY || 0) - (b.messageY || 0));
+        
+        const maxBottom = Math.max(...participants.map(n => n.y + n.height));
+        const messageStartY = maxBottom + 40;
+        const messageSpacing = 50;
+        
+        seqMessages.forEach((msg, i) => {
+          msg.messageY = messageStartY + i * messageSpacing;
+        });
+      }
+      
+      // Place other nodes below the sequence area
+      if (otherNodes.length > 0) {
+        const seqBottom = seqMessages.length > 0 
+          ? Math.max(...seqMessages.map(m => m.messageY || 0)) + 80
+          : startY + 300;
+        const cols = Math.ceil(Math.sqrt(otherNodes.length));
+        otherNodes.forEach((node, i) => {
+          node.x = startX + (i % cols) * 150;
+          node.y = seqBottom + 50 + Math.floor(i / cols) * 80;
+        });
+      }
+    }
+    
+    // Arrange class diagram - grid with proper spacing
+    function arrangeClass() {
+      const classes = nodes.filter(n => n.isClass);
+      const otherNodes = nodes.filter(n => !n.isClass);
+      
+      const startX = 100;
+      const startY = 100;
+      const spacingX = 220;
+      const spacingY = 180;
+      const cols = Math.max(2, Math.ceil(Math.sqrt(classes.length)));
+      
+      classes.forEach((node, i) => {
+        node.x = startX + (i % cols) * spacingX;
+        node.y = startY + Math.floor(i / cols) * spacingY;
+      });
+      
+      // Place other nodes to the right
+      if (otherNodes.length > 0) {
+        const classRight = classes.length > 0 
+          ? Math.max(...classes.map(n => n.x + n.width)) + 100
+          : startX;
+        otherNodes.forEach((node, i) => {
+          node.x = classRight + (i % 2) * 150;
+          node.y = startY + Math.floor(i / 2) * 80;
+        });
+      }
+    }
+    
+    // Arrange flowchart - layered layout based on connections
+    function arrangeFlowchart() {
+      // Skip line/arrow shapes - they don't need arranging
+      const flowNodes = nodes.filter(n => n.type !== 'line');
+      if (flowNodes.length === 0) return;
+      
+      // Build adjacency map
+      const outgoing = {};
+      const incoming = {};
+      flowNodes.forEach(n => {
+        outgoing[n.id] = [];
+        incoming[n.id] = [];
+      });
+      
+      connections.filter(c => !c.isSequenceMessage).forEach(c => {
+        if (outgoing[c.from] && incoming[c.to]) {
+          outgoing[c.from].push(c.to);
+          incoming[c.to].push(c.from);
+        }
+      });
+      
+      // Find root nodes (no incoming connections)
+      let roots = flowNodes.filter(n => incoming[n.id].length === 0);
+      if (roots.length === 0) roots = [flowNodes[0]]; // Fallback: use first node
+      
+      // BFS to assign layers
+      const layers = {};
+      const visited = new Set();
+      let queue = roots.map(n => ({ id: n.id, layer: 0 }));
+      
+      while (queue.length > 0) {
+        const { id, layer } = queue.shift();
+        if (visited.has(id)) continue;
+        visited.add(id);
+        
+        if (!layers[layer]) layers[layer] = [];
+        layers[layer].push(id);
+        
+        outgoing[id].forEach(targetId => {
+          if (!visited.has(targetId)) {
+            queue.push({ id: targetId, layer: layer + 1 });
+          }
+        });
+      }
+      
+      // Add any unvisited nodes to layer 0
+      flowNodes.forEach(n => {
+        if (!visited.has(n.id)) {
+          if (!layers[0]) layers[0] = [];
+          layers[0].push(n.id);
+        }
+      });
+      
+      // Position nodes by layer
+      const startX = 100;
+      const startY = 100;
+      const layerSpacingY = 100;
+      const nodeSpacingX = 160;
+      
+      Object.keys(layers).sort((a, b) => a - b).forEach(layerNum => {
+        const layerNodes = layers[layerNum];
+        const layerWidth = layerNodes.length * nodeSpacingX;
+        const layerStartX = startX + (Math.max(...Object.values(layers).map(l => l.length)) * nodeSpacingX - layerWidth) / 2;
+        
+        layerNodes.forEach((nodeId, i) => {
+          const node = nodes.find(n => n.id === nodeId);
+          if (node) {
+            node.x = layerStartX + i * nodeSpacingX;
+            node.y = startY + parseInt(layerNum) * layerSpacingY;
+          }
+        });
+      });
+      
+      // Position line/arrow shapes at the bottom
+      const lineNodes = nodes.filter(n => n.type === 'line');
+      if (lineNodes.length > 0) {
+        const flowBottom = Math.max(...flowNodes.map(n => n.y + n.height)) + 50;
+        lineNodes.forEach((node, i) => {
+          node.x = startX + i * 150;
+          node.y = flowBottom;
+        });
+      }
+    }
+    
     function setGlobalLineStyle(style) {
       globalLineStyle = style;
       document.querySelectorAll('[data-line]').forEach(btn => btn.classList.toggle('active', btn.dataset.line === style));
@@ -2081,6 +2278,7 @@
       if (e.key === '8') { toggleGrid(); return; }
       if (e.key === '9') { toggleDropdown('exportDropdown'); return; }
       if (e.key === '0') { shareDiagram(); return; }
+      if (e.key === 'a' && !e.ctrlKey && !e.metaKey) { arrangeDiagram(); return; }
       
       // Alt shows connectors temporarily
       if (e.key === 'Alt') canvas.classList.add('show-connectors');
