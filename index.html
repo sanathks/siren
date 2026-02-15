@@ -2137,16 +2137,138 @@
     function generateMermaid() {
       if (nodes.length === 0) return 'flowchart TD\n    %% Empty diagram';
       
+      // Detect diagram type
+      const hasParticipants = nodes.some(n => n.isParticipant);
+      const hasSequenceMessages = connections.some(c => c.isSequenceMessage);
+      const hasClasses = nodes.some(n => n.isClass);
+      
+      // Sequence Diagram
+      if (hasParticipants || hasSequenceMessages) {
+        return generateSequenceMermaid();
+      }
+      
+      // Class Diagram
+      if (hasClasses) {
+        return generateClassMermaid();
+      }
+      
+      // Default: Flowchart
+      return generateFlowchartMermaid();
+    }
+    
+    function generateSequenceMermaid() {
+      let code = 'sequenceDiagram\n';
+      
+      // Get participants in order (by x position)
+      const participants = nodes.filter(n => n.isParticipant).sort((a, b) => a.x - b.x);
+      
+      // Generate participant definitions
+      participants.forEach(p => {
+        const keyword = p.isActor ? 'actor' : 'participant';
+        const label = (p.label || 'Participant').replace(/"/g, "'");
+        // Use sanitized label as ID
+        const id = label.replace(/[^a-zA-Z0-9]/g, '');
+        code += `    ${keyword} ${id} as ${label}\n`;
+      });
+      
+      code += '\n';
+      
+      // Build ID map
+      const idMap = {};
+      participants.forEach(p => {
+        const label = (p.label || 'Participant').replace(/"/g, "'");
+        idMap[p.id] = label.replace(/[^a-zA-Z0-9]/g, '');
+      });
+      
+      // Get sequence messages sorted by Y position
+      const messages = connections
+        .filter(c => c.isSequenceMessage)
+        .sort((a, b) => (a.messageY || 0) - (b.messageY || 0));
+      
+      // Generate messages
+      messages.forEach(msg => {
+        const fromId = idMap[msg.from];
+        const toId = idMap[msg.to];
+        if (fromId && toId) {
+          // Determine arrow type
+          let arrow = '->>';
+          if (msg.arrow) {
+            if (msg.arrow.includes('--')) arrow = '-->>'; // dashed
+            if (msg.arrow.includes(')')) arrow = arrow.replace('>>', ')'); // async (open arrow)
+          }
+          
+          const label = msg.label || '';
+          code += `    ${fromId}${arrow}${toId}: ${label}\n`;
+        }
+      });
+      
+      return code.trim();
+    }
+    
+    function generateClassMermaid() {
+      let code = 'classDiagram\n';
+      
+      // Generate class definitions
+      nodes.filter(n => n.isClass).forEach(cls => {
+        const name = (cls.label || 'Class').replace(/[^a-zA-Z0-9]/g, '');
+        code += `    class ${name} {\n`;
+        
+        // Properties
+        (cls.properties || []).forEach(prop => {
+          code += `        ${prop}\n`;
+        });
+        
+        // Methods  
+        (cls.methods || []).forEach(method => {
+          code += `        ${method}\n`;
+        });
+        
+        code += `    }\n`;
+      });
+      
+      // Build ID map
+      const idMap = {};
+      nodes.filter(n => n.isClass).forEach(cls => {
+        idMap[cls.id] = (cls.label || 'Class').replace(/[^a-zA-Z0-9]/g, '');
+      });
+      
+      // Generate relationships
+      connections.forEach(c => {
+        const fromId = idMap[c.from];
+        const toId = idMap[c.to];
+        if (fromId && toId) {
+          // Determine relationship type
+          let rel = '-->';
+          if (c.relType) {
+            switch (c.relType) {
+              case '<|--': rel = '<|--'; break; // inheritance
+              case '--*': rel = '*--'; break; // composition
+              case 'o--': rel = 'o--'; break; // aggregation
+              default: rel = '-->';
+            }
+          }
+          const label = c.label ? ` : ${c.label}` : '';
+          code += `    ${fromId} ${rel} ${toId}${label}\n`;
+        }
+      });
+      
+      return code.trim();
+    }
+    
+    function generateFlowchartMermaid() {
       let code = 'flowchart TD\n';
       const nodeIds = {};
       
+      // Filter out line/arrow shapes (they're not flowchart nodes)
+      const flowNodes = nodes.filter(n => n.type !== 'line');
+      
       // Generate node IDs (A, B, C, ...)
-      nodes.forEach((n, i) => {
+      flowNodes.forEach((n, i) => {
         nodeIds[n.id] = String.fromCharCode(65 + (i % 26)) + (i >= 26 ? Math.floor(i / 26) : '');
       });
       
       // Generate node definitions
-      nodes.forEach(n => {
+      flowNodes.forEach(n => {
         const id = nodeIds[n.id];
         const label = (n.label || 'Node').replace(/"/g, "'");
         let shape;
@@ -2155,15 +2277,17 @@
           case 'diamond': shape = `{${label}}`; break;
           case 'circle': shape = `((${label}))`; break;
           case 'container': shape = `[["${label}"]]`; break;
+          case 'text': shape = `>${label}]`; break;
           default: shape = `[${label}]`;
         }
         code += `    ${id}${shape}\n`;
       });
       
-      // Generate connections
-      if (connections.length > 0) {
+      // Generate connections (excluding sequence messages)
+      const flowConnections = connections.filter(c => !c.isSequenceMessage);
+      if (flowConnections.length > 0) {
         code += '\n';
-        connections.forEach(c => {
+        flowConnections.forEach(c => {
           const fromId = nodeIds[c.from];
           const toId = nodeIds[c.to];
           if (fromId && toId) {
