@@ -1,7 +1,7 @@
 # Siren
 
 <p align="center">
-  <img src="siren-logo.png" alt="Siren Logo" width="200">
+  <img src="resources/siren-logo.png" alt="Siren Logo" width="200">
 </p>
 
 <p align="center">
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://sanath-diagram-studio.netlify.app"><strong>Try it now →</strong></a>
+  <a href="https://siren.sanath.dev"><strong>Try it now →</strong></a>
 </p>
 
 ---
@@ -52,7 +52,7 @@ Siren fixes this:
 
 ## Quick Start
 
-1. Open [Siren](https://sanath-diagram-studio.netlify.app)
+1. Open [siren.sanath.dev](https://siren.sanath.dev)
 2. Press `M` to open Mermaid editor
 3. Paste your diagram or start fresh
 4. Press `Ctrl+Enter` to import
