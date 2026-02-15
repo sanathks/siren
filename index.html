@@ -1789,83 +1789,21 @@
       }, 100);
     }
     
-    let lastConnClick = { time: 0, id: null };
-    
     function onConnectionMouseDown(e) {
       const connId = e.target.dataset.conn || e.currentTarget.dataset.conn;
       if (!connId) return;
-      const now = Date.now();
       
-      // Check for double-click (same connection within 400ms)
-      if (lastConnClick.id === connId && now - lastConnClick.time < 400) {
-        // Double-click - edit label
-        const conn = connections.find(c => c.id === connId);
-        if (conn) {
-          showConnectionLabelInput(conn, e.clientX, e.clientY);
-        }
-        lastConnClick = { time: 0, id: null };
-      } else {
-        // Single click - select
-        lastConnClick = { time: now, id: connId };
-        selectedConnId = connId;
-        selectedId = null;
-        selectedIds = [];
-        floatingToolbar.classList.add('hidden');
-        render();
-        // Show connection toolbar
-        const conn = connections.find(c => c.id === connId);
-        if (conn) showConnToolbar(conn);
-      }
+      // Select connection and show toolbar (toolbar has label input)
+      selectedConnId = connId;
+      selectedId = null;
+      selectedIds = [];
+      floatingToolbar.classList.add('hidden');
+      render();
+      const conn = connections.find(c => c.id === connId);
+      if (conn) showConnToolbar(conn);
       
       e.stopPropagation();
       e.preventDefault();
-    }
-    
-    function showConnectionLabelInput(conn, clientX, clientY) {
-      // Remove existing input if any
-      const existing = document.getElementById('connLabelInput');
-      if (existing) existing.remove();
-      
-      // Create inline input
-      const input = document.createElement('input');
-      input.id = 'connLabelInput';
-      input.type = 'text';
-      input.value = conn.label || '';
-      input.placeholder = 'Label...';
-      input.style.cssText = `
-        position: absolute;
-        left: ${clientX - 50}px;
-        top: ${clientY - 15}px;
-        width: 100px;
-        padding: 4px 8px;
-        background: #24283b;
-        border: 2px solid #7aa2f7;
-        border-radius: 4px;
-        color: #a9b1d6;
-        font-size: 12px;
-        text-align: center;
-        outline: none;
-        z-index: 100;
-      `;
-      
-      document.getElementById('canvasContainer').appendChild(input);
-      input.focus();
-      input.select();
-      
-      const save = () => {
-        conn.label = input.value;
-        editingConnId = null;
-        input.remove();
-        saveState();
-        render();
-      };
-      
-      input.addEventListener('blur', save);
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { save(); }
-        if (e.key === 'Escape') { editingConnId = null; input.remove(); }
-        e.stopPropagation();
-      });
     }
     
     function onConnectorMouseDown(e) {
@@ -2211,26 +2149,32 @@
             render();
           }
         } else if (!target?.closest('.node')) {
-          // Released on empty canvas - create new connected node!
-          const fromNode = nodes.find(n => n.id === connecting.from);
-          const newNode = createNode('rect', pos.x - 60, pos.y - 22, 120, 44);
-          
-          // Determine best sides for connection
-          const toSide = getBestConnectorSide(newNode, fromNode.x + fromNode.width/2, fromNode.y + fromNode.height/2);
-          
-          connections.push({ 
-            id: 'c' + Date.now(), 
-            from: connecting.from, 
-            fromSide: connecting.fromSide,
-            fromIdx: connecting.fromIdx,
-            to: newNode.id, 
-            toSide: toSide,
-            toIdx: 1,
-            lineStyle: globalLineStyle
-          });
-          saveState();
-          render();
-          selectNode(newNode.id);
+          // Released on empty canvas
+          if (connecting.isLifeline) {
+            // For lifeline connections, just cancel - don't create a node
+            // Sequence messages should only connect lifelines
+          } else {
+            // For regular connections, create new connected node
+            const fromNode = nodes.find(n => n.id === connecting.from);
+            const newNode = createNode('rect', pos.x - 60, pos.y - 22, 120, 44);
+            
+            // Determine best sides for connection
+            const toSide = getBestConnectorSide(newNode, fromNode.x + fromNode.width/2, fromNode.y + fromNode.height/2);
+            
+            connections.push({ 
+              id: 'c' + Date.now(), 
+              from: connecting.from, 
+              fromSide: connecting.fromSide,
+              fromIdx: connecting.fromIdx,
+              to: newNode.id, 
+              toSide: toSide,
+              toIdx: 1,
+              lineStyle: globalLineStyle
+            });
+            saveState();
+            render();
+            selectNode(newNode.id);
+          }
         }
         
         connecting = null;
