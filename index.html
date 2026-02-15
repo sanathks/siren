@@ -443,7 +443,7 @@
     // Sync tempLine viewBox with canvas for proper coordinate mapping
     function showTempLine() {
       tempLine.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
-      showTempLine();
+      tempLine.style.display = 'block';
     }
     const zoomLevel = document.getElementById('zoomLevel');
     const gridBg = document.getElementById('gridBg');
