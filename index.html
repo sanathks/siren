@@ -854,10 +854,11 @@
             <text x="${midX}" y="${y - 8}" fill="${COLORS.fg}" font-size="11" font-family="system-ui, sans-serif" text-anchor="middle" data-conn="${conn.id}" style="cursor:pointer;pointer-events:painted">${esc(label)}</text>
           ` : '';
           
-          // Hit area for arrow head (larger invisible version)
-          const arrowHit = `<path d="${arrowPath}" fill="transparent" stroke="transparent" stroke-width="15" data-conn="${conn.id}" style="cursor:pointer"/>`;
+          // Hit area for arrow head (circle around arrow tip)
+          const arrowHitX = toX - dir * 5;
+          const arrowHit = `<circle cx="${arrowHitX}" cy="${y}" r="12" fill="transparent" data-conn="${conn.id}" style="cursor:pointer;pointer-events:all"/>`;
           return `<g class="connection-group ${isConnSelected ? 'selected' : ''}" data-id="${conn.id}" data-conn="${conn.id}" style="cursor:pointer">
-            <line class="conn-hit" x1="${fromX}" y1="${y}" x2="${toX}" y2="${y}" stroke="transparent" stroke-width="20" data-conn="${conn.id}" style="cursor:pointer"/>
+            <line class="conn-hit" x1="${fromX}" y1="${y}" x2="${toX}" y2="${y}" stroke="transparent" stroke-width="20" data-conn="${conn.id}" style="cursor:pointer;pointer-events:stroke"/>
             ${arrowHit}
             <line x1="${fromX}" y1="${y}" x2="${arrowX}" y2="${y}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-dasharray="${dashArray}" class="connection" style="pointer-events:none"/>
             <path d="${arrowPath}" fill="${isAsync ? 'none' : strokeColor}" stroke="${strokeColor}" stroke-width="1.5" style="pointer-events:none"/>
@@ -968,10 +969,10 @@
           `;
         }
         
-        // Wider path for easier clicking (nearly invisible)
-        const hitArea = `<path class="conn-hit" d="${path}" fill="none" stroke="transparent" stroke-width="20" data-conn="${conn.id}" style="cursor:pointer"/>`;
-        // Arrow head hit area
-        const arrowHit = `<path d="${arrow}" fill="transparent" stroke="transparent" stroke-width="15" data-conn="${conn.id}" style="cursor:pointer"/>`;
+        // Wider path for easier clicking
+        const hitArea = `<path class="conn-hit" d="${path}" fill="none" stroke="transparent" stroke-width="20" data-conn="${conn.id}" style="cursor:pointer;pointer-events:stroke"/>`;
+        // Arrow head hit area (circle around tip)
+        const arrowHit = `<circle cx="${tipX}" cy="${tipY}" r="12" fill="transparent" data-conn="${conn.id}" style="cursor:pointer;pointer-events:all"/>`;
         
         const connDashArray = conn.strokeStyle === 'dashed' ? '5,3' : 'none';
         return `<g class="connection-group ${isConnSelected ? 'selected' : ''}" data-id="${conn.id}" data-conn="${conn.id}" style="cursor:pointer">${hitArea}${arrowHit}<path class="connection" d="${path}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-dasharray="${connDashArray}" style="pointer-events:none"/><path d="${arrow}" fill="${strokeColor}" style="pointer-events:none"/>${labelEl}</g>`;
