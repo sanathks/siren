@@ -1641,8 +1641,11 @@
       // Center view on arranged content
       const bounds = getContentBounds();
       if (bounds) {
-        viewBox.x = bounds.minX - 50;
-        viewBox.y = bounds.minY - 50;
+        const contentWidth = bounds.maxX - bounds.minX;
+        const contentHeight = bounds.maxY - bounds.minY;
+        // Center the content in the viewport
+        viewBox.x = bounds.minX - (viewBox.w - contentWidth) / 2;
+        viewBox.y = bounds.minY - (viewBox.h - contentHeight) / 2;
         updateViewBox();
       }
     }
