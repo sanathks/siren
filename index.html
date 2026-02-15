@@ -351,6 +351,14 @@
           </div>
         </div>
         
+        <!-- Lifeline toggle (for sequence diagrams) -->
+        <button id="lifelineToggle" onclick="toggleLifeline()" title="Toggle Lifeline (Sequence Diagram)" style="width:28px;height:28px;background:#1a1b26;border:1px solid #414868;border-radius:4px;color:#a9b1d6;display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px">
+            <rect x="6" y="2" width="12" height="6" rx="1"/>
+            <line x1="12" y1="8" x2="12" y2="22" stroke-dasharray="3,2"/>
+          </svg>
+        </button>
+        
         <button onclick="deleteSelected()" title="Delete" style="width:28px;height:28px;background:rgba(247,118,142,0.2);border:none;border-radius:4px;color:#f7768e;display:flex;align-items:center;justify-content:center">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px">
             <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -710,8 +718,8 @@
     }
     
     function render() {
-      // First, render lifelines for sequence participants
-      const sequenceParticipants = nodes.filter(n => n.isParticipant);
+      // First, render lifelines for sequence participants (either imported or user-toggled)
+      const sequenceParticipants = nodes.filter(n => n.isParticipant || n.hasLifeline);
       const lifelineHeight = connections.some(c => c.isSequenceMessage) ? 
         Math.max(...connections.filter(c => c.isSequenceMessage).map(c => c.messageY || 0)) + 80 : 300;
       
@@ -814,8 +822,8 @@
           ` : '';
           
           return `<g class="connection-group ${isConnSelected ? 'selected' : ''}" data-id="${conn.id}" data-conn="${conn.id}" style="cursor:pointer">
-            <line x1="${fromX}" y1="${y}" x2="${toX}" y2="${y}" stroke="transparent" stroke-width="12"/>
-            <line x1="${fromX}" y1="${y}" x2="${arrowX}" y2="${y}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-dasharray="${dashArray}"/>
+            <line class="conn-hit" x1="${fromX}" y1="${y}" x2="${toX}" y2="${y}" stroke="rgba(128,128,128,0.001)" stroke-width="20" data-conn="${conn.id}"/>
+            <line x1="${fromX}" y1="${y}" x2="${arrowX}" y2="${y}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-dasharray="${dashArray}" class="connection"/>
             <path d="${arrowPath}" fill="${isAsync ? 'none' : strokeColor}" stroke="${strokeColor}" stroke-width="1.5"/>
             ${labelEl}
           </g>`;
@@ -1109,7 +1117,8 @@
         
         // Add lifeline for sequence participants with clickable connection zones
         let lifeline = '';
-        if (node.isParticipant) {
+        const showLifeline = node.isParticipant || node.hasLifeline;
+        if (showLifeline) {
           const lifeX = node.x + node.width/2;
           const lifeY1 = node.y + node.height;
           const lifeY2 = node.y + node.height + lifelineHeight;
@@ -1131,8 +1140,9 @@
           }
         }
         
-        // Don't render connectors for line/arrow shapes - they have their own handles
-        const connectors = node.type === 'line' ? '' : renderConnectors(node);
+        // Don't render connectors for line/arrow shapes or nodes with lifelines
+        const hasLifelineActive = node.isParticipant || node.hasLifeline;
+        const connectors = (node.type === 'line' || hasLifelineActive) ? '' : renderConnectors(node);
         // Don't render resize handle for line shapes - they have endpoint handles
         const resizeHandle = (isSelected && node.type !== 'line') ? 
           `<rect class="resize-handle" x="${node.x + node.width - 8}" y="${node.y + node.height - 8}" width="8" height="8" fill="${COLORS.accent}" rx="2"/>` : '';
@@ -1216,11 +1226,15 @@
         document.getElementById('fillStyleGroup').style.display = isLine ? 'none' : 'inline-block';
         document.getElementById('fillColorGroup').style.display = isLine ? 'none' : 'inline-block';
         document.getElementById('lineStyleGroup').style.display = isLine ? 'inline-block' : 'none';
+        document.getElementById('lifelineToggle').style.display = isLine ? 'none' : 'flex';
         
         // Update line style button
         if (isLine) {
           updateLineStyleButton(node);
         }
+        
+        // Update lifeline button state
+        updateLifelineButton(node);
       } else {
         floatingToolbar.classList.add('hidden');
       }
@@ -1460,6 +1474,30 @@
       btn.innerHTML = isDashed ? 
         `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3,2" style="width:14px;height:14px"><line x1="4" y1="12" x2="20" y2="12"/></svg>` :
         `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="4" y1="12" x2="20" y2="12"/></svg>`;
+    }
+    
+    // Lifeline toggle (for sequence diagrams)
+    function toggleLifeline() {
+      const node = nodes.find(n => n.id === selectedId);
+      if (!node) return;
+      node.hasLifeline = !node.hasLifeline;
+      updateLifelineButton(node);
+      saveState();
+      render();
+    }
+    
+    function updateLifelineButton(node) {
+      const btn = document.getElementById('lifelineToggle');
+      if (!btn) return;
+      if (node.hasLifeline) {
+        btn.style.background = '#7aa2f7';
+        btn.style.color = '#1a1b26';
+        btn.style.borderColor = '#7aa2f7';
+      } else {
+        btn.style.background = '#1a1b26';
+        btn.style.color = '#a9b1d6';
+        btn.style.borderColor = '#414868';
+      }
     }
     
     function clearCanvas() {
@@ -1793,20 +1831,32 @@
       // Drawing connection
       if (connecting) {
         const fromNode = nodes.find(n => n.id === connecting.from);
-        const [x1, y1] = getConnectorPos(fromNode, connecting.fromSide, connecting.fromIdx);
-        const dist = Math.sqrt(Math.pow(pos.x-x1, 2) + Math.pow(pos.y-y1, 2));
-        const curveFactor = Math.max(50, dist * 0.4);
-        const getOff = (side, f) => {
-          switch(side) {
-            case 'right': return { x: f, y: 0 };
-            case 'left': return { x: -f, y: 0 };
-            case 'bottom': return { x: 0, y: f };
-            case 'top': return { x: 0, y: -f };
-          }
-        };
-        const off = getOff(connecting.fromSide, curveFactor);
-        const path = `M${x1},${y1} C${x1 + off.x},${y1 + off.y} ${pos.x},${pos.y} ${pos.x},${pos.y}`;
-        tempPath.setAttribute('d', path);
+        let x1, y1;
+        
+        if (connecting.isLifeline) {
+          // For lifeline connections, start from the lifeline center at the clicked Y position
+          x1 = fromNode.x + fromNode.width / 2;
+          y1 = connecting.lifelineY;
+          // Draw a straight horizontal line for sequence messages
+          const path = `M${x1},${y1} L${pos.x},${y1}`;
+          tempPath.setAttribute('d', path);
+        } else {
+          // Normal connector - curved path
+          [x1, y1] = getConnectorPos(fromNode, connecting.fromSide, connecting.fromIdx);
+          const dist = Math.sqrt(Math.pow(pos.x-x1, 2) + Math.pow(pos.y-y1, 2));
+          const curveFactor = Math.max(50, dist * 0.4);
+          const getOff = (side, f) => {
+            switch(side) {
+              case 'right': return { x: f, y: 0 };
+              case 'left': return { x: -f, y: 0 };
+              case 'bottom': return { x: 0, y: f };
+              case 'top': return { x: 0, y: -f };
+            }
+          };
+          const off = getOff(connecting.fromSide, curveFactor);
+          const path = `M${x1},${y1} C${x1 + off.x},${y1 + off.y} ${pos.x},${pos.y} ${pos.x},${pos.y}`;
+          tempPath.setAttribute('d', path);
+        }
       }
       
       // Marquee selection
@@ -2197,7 +2247,7 @@
       if (nodes.length === 0) return 'flowchart TD\n    %% Empty diagram';
       
       // Detect diagram type
-      const hasParticipants = nodes.some(n => n.isParticipant);
+      const hasParticipants = nodes.some(n => n.isParticipant || n.hasLifeline);
       const hasSequenceMessages = connections.some(c => c.isSequenceMessage);
       const hasClasses = nodes.some(n => n.isClass);
       
@@ -2218,8 +2268,8 @@
     function generateSequenceMermaid() {
       let code = 'sequenceDiagram\n';
       
-      // Get participants in order (by x position)
-      const participants = nodes.filter(n => n.isParticipant).sort((a, b) => a.x - b.x);
+      // Get participants in order (by x position) - includes both imported and user-created
+      const participants = nodes.filter(n => n.isParticipant || n.hasLifeline).sort((a, b) => a.x - b.x);
       
       // Generate participant definitions
       participants.forEach(p => {
@@ -2765,9 +2815,10 @@
             node.methods = n.methods || [];
           }
           
-          // Mark as sequence participant
+          // Mark as sequence participant with lifeline
           if (isParticipant) {
             node.isParticipant = true;
+            node.hasLifeline = true;  // Enable lifeline for UI
             node.isActor = n.type === 'actor';
           }
           
