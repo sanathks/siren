@@ -249,7 +249,7 @@
     
     <!-- Temp line for drawing connections -->
     <svg id="tempLine" class="absolute inset-0 w-full h-full pointer-events-none z-10" style="display:none;">
-      <path id="tempPath" fill="none" stroke="#7aa2f7" stroke-width="2.5"/>
+      <path id="tempPath" fill="none" stroke="#7aa2f7" stroke-width="2"/>
     </svg>
     
     <!-- Zoom indicator -->
@@ -439,6 +439,12 @@
     const connectionsGroup = document.getElementById('connections');
     const tempLine = document.getElementById('tempLine');
     const tempPath = document.getElementById('tempPath');
+    
+    // Sync tempLine viewBox with canvas for proper coordinate mapping
+    function showTempLine() {
+      tempLine.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+      showTempLine();
+    }
     const zoomLevel = document.getElementById('zoomLevel');
     const gridBg = document.getElementById('gridBg');
     const drawPreview = document.getElementById('drawPreview');
@@ -1812,7 +1818,7 @@
         fromSide: e.target.dataset.side,
         fromIdx: parseInt(e.target.dataset.idx) || 1
       };
-      tempLine.style.display = 'block';
+      showTempLine();
       canvas.classList.add('show-connectors');
       e.preventDefault();
       e.stopPropagation();
@@ -1828,7 +1834,7 @@
         isLifeline: true,
         lifelineY: lifelineY
       };
-      tempLine.style.display = 'block';
+      showTempLine();
       canvas.classList.add('show-connectors');
       e.preventDefault();
       e.stopPropagation();
@@ -1922,7 +1928,7 @@
           const px = Math.cos(angle + Math.PI/2) * aWidth;
           const py = Math.sin(angle + Math.PI/2) * aWidth;
           tempPath.setAttribute('d', `M${x1},${y1} L${x2},${y2} M${x2},${y2} L${baseX + px},${baseY + py} M${x2},${y2} L${baseX - px},${baseY - py}`);
-          tempLine.style.display = 'block';
+          showTempLine();
         } else {
           tempLine.style.display = 'none';
           const x = Math.min(drawing.startX, pos.x);
@@ -2705,9 +2711,11 @@
         }
         
         // Message: Alice->>Bob: Hello or Alice-->>Bob: Hi or Alice-)Bob: Async
-        m = line.match(/^(\w+)\s*(->>|-->>|-\)|--\)|->|-->)\s*(\w+)\s*:\s*(.*)$/);
+        // Also handles activation: Alice->>+Bob or Bob-->>-Alice
+        m = line.match(/^(\w+)\s*(->>|-->>|-\)|--\)|->|-->)([+-])?\s*(\w+)\s*:\s*(.*)$/);
         if (m) {
-          const [, from, arrow, to, message] = m;
+          const [, from, arrow, activation, to, message] = m;
+          // Note: activation (+/-) is parsed but not rendered yet (future: activation boxes)
           
           // Auto-create participants if not defined
           if (!participantMap[from]) {
