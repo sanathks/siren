@@ -3100,9 +3100,9 @@
           });
         }
         
+        // Ensure nodes are fully created before arranging
+        saveState();
         render();
-        
-        // Auto-arrange the imported diagram for clean presentation
         arrangeDiagram();
         
       } catch (e) {
