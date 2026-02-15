@@ -831,10 +831,45 @@
           const isAsync = conn.arrow?.includes(')');
           const dashArray = isDashed ? '5,3' : 'none';
           
+          const aLen = 8, aWidth = 4;
+          const label = conn.label || '';
+          
+          // Self-referencing message (same lifeline)
+          if (conn.from === conn.to) {
+            const loopWidth = 40;
+            const loopHeight = 25;
+            const startY = y;
+            const endY = y + loopHeight;
+            const rightX = fromX + loopWidth;
+            
+            // Curved loop path going right and down
+            const loopPath = `M${fromX},${startY} L${rightX},${startY} L${rightX},${endY} L${fromX + 3},${endY}`;
+            
+            // Arrow pointing left at the end
+            const arrowPath = `M${fromX + 3},${endY} L${fromX + 3 + aLen},${endY - aWidth} L${fromX + 3 + aLen},${endY + aWidth} Z`;
+            
+            // Label on the right side
+            const labelX = rightX + 5;
+            const labelY = startY + loopHeight / 2;
+            const labelEl = label ? `
+              <rect x="${labelX}" y="${labelY - 7}" width="${label.length * 7 + 8}" height="14" fill="${COLORS.bg}" rx="2" data-conn="${conn.id}" style="cursor:pointer;pointer-events:fill"/>
+              <text x="${labelX + 4}" y="${labelY + 4}" fill="${COLORS.fg}" font-size="11" font-family="system-ui, sans-serif" data-conn="${conn.id}" style="cursor:pointer;pointer-events:painted">${esc(label)}</text>
+            ` : '';
+            
+            const arrowHit = `<circle class="conn-hit" cx="${fromX + 5}" cy="${endY}" r="15" fill="transparent" data-conn="${conn.id}" style="cursor:pointer;pointer-events:all"/>`;
+            
+            return `<g class="connection-group ${isConnSelected ? 'selected' : ''}" data-id="${conn.id}" data-conn="${conn.id}" style="cursor:pointer">
+              <path class="conn-hit" d="${loopPath}" fill="none" stroke="transparent" stroke-width="20" data-conn="${conn.id}" style="cursor:pointer;pointer-events:stroke"/>
+              ${arrowHit}
+              <path d="${loopPath}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-dasharray="${dashArray}" style="pointer-events:none"/>
+              <path d="${arrowPath}" fill="${isAsync ? 'none' : strokeColor}" stroke="${strokeColor}" stroke-width="1.5" style="pointer-events:none"/>
+              ${labelEl}
+            </g>`;
+          }
+          
           // Arrow direction
           const dir = toX > fromX ? 1 : -1;
           const arrowX = toX - dir * 3;
-          const aLen = 8, aWidth = 4;
           
           // Arrow head
           let arrowPath;
@@ -847,7 +882,6 @@
           }
           
           // Label
-          const label = conn.label || '';
           const midX = (fromX + toX) / 2;
           const labelEl = label ? `
             <rect x="${midX - label.length * 3.5 - 4}" y="${y - 18}" width="${label.length * 7 + 8}" height="14" fill="${COLORS.bg}" rx="2" data-conn="${conn.id}" style="cursor:pointer;pointer-events:fill"/>
@@ -856,7 +890,7 @@
           
           // Hit area for arrow head (circle around arrow tip)
           const arrowHitX = toX - dir * 5;
-          const arrowHit = `<circle class="conn-hit" cx="${arrowHitX}" cy="${y}" r="15" fill="rgba(255,0,0,0.1)" data-conn="${conn.id}" style="cursor:pointer;pointer-events:all"/>`;
+          const arrowHit = `<circle class="conn-hit" cx="${arrowHitX}" cy="${y}" r="15" fill="transparent" data-conn="${conn.id}" style="cursor:pointer;pointer-events:all"/>`;
           return `<g class="connection-group ${isConnSelected ? 'selected' : ''}" data-id="${conn.id}" data-conn="${conn.id}" style="cursor:pointer">
             <line class="conn-hit" x1="${fromX}" y1="${y}" x2="${toX}" y2="${y}" stroke="transparent" stroke-width="20" data-conn="${conn.id}" style="cursor:pointer;pointer-events:stroke"/>
             ${arrowHit}
@@ -972,7 +1006,7 @@
         // Wider path for easier clicking
         const hitArea = `<path class="conn-hit" d="${path}" fill="none" stroke="transparent" stroke-width="20" data-conn="${conn.id}" style="cursor:pointer;pointer-events:stroke"/>`;
         // Arrow head hit area (circle around tip)
-        const arrowHit = `<circle class="conn-hit" cx="${tipX}" cy="${tipY}" r="15" fill="rgba(255,0,0,0.1)" data-conn="${conn.id}" style="cursor:pointer;pointer-events:all"/>`;
+        const arrowHit = `<circle class="conn-hit" cx="${tipX}" cy="${tipY}" r="15" fill="transparent" data-conn="${conn.id}" style="cursor:pointer;pointer-events:all"/>`;
         
         const connDashArray = conn.strokeStyle === 'dashed' ? '5,3' : 'none';
         return `<g class="connection-group ${isConnSelected ? 'selected' : ''}" data-id="${conn.id}" data-conn="${conn.id}" style="cursor:pointer">${hitArea}${arrowHit}<path class="connection" d="${path}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-dasharray="${connDashArray}" style="pointer-events:none"/><path d="${arrow}" fill="${strokeColor}" style="pointer-events:none"/>${labelEl}</g>`;
@@ -2143,24 +2177,23 @@
           // Lifeline to lifeline connection - create sequence message
           const toId = target.dataset.node;
           const toLifelineY = parseFloat(target.dataset.lifelineY);
-          if (toId !== connecting.from) {
-            const messageY = connecting.lifelineY || toLifelineY || pos.y;
-            connections.push({ 
-              id: 'c' + Date.now(), 
-              from: connecting.from, 
-              to: toId, 
-              fromSide: 'bottom',
-              toSide: 'bottom',
-              fromIdx: 1,
-              toIdx: 1,
-              label: '',
-              isSequenceMessage: true,
-              messageY: messageY,
-              arrow: '->>'
-            });
-            saveState();
-            render();
-          }
+          // Allow self-connections (will render as curved loop)
+          const messageY = connecting.lifelineY || toLifelineY || pos.y;
+          connections.push({ 
+            id: 'c' + Date.now(), 
+            from: connecting.from, 
+            to: toId, 
+            fromSide: 'bottom',
+            toSide: 'bottom',
+            fromIdx: 1,
+            toIdx: 1,
+            label: '',
+            isSequenceMessage: true,
+            messageY: messageY,
+            arrow: '->>'
+          });
+          saveState();
+          render();
         } else if (target?.classList.contains('connector')) {
           // Connected to existing node connector
           const toId = target.dataset.node;
