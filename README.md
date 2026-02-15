@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>The best of both worlds: Mermaid syntax + visual editing.</strong>
+  <strong>Beautiful diagrams in seconds. No signup. No friction.</strong>
 </p>
 
 <p align="center">
@@ -14,94 +14,93 @@
 
 ---
 
+## Create Diagrams Fast
+
+Open the browser. Start drawing. Share instantly.
+
+No account. No install. No learning curve.
+
+```bash
+# Run locally in one command
+npx serve
+```
+
 ## Why Siren?
 
-**Love Mermaid but frustrated you can't drag things around?**
+Most diagram tools are either:
+- **Too heavy** - Login walls, slow load times, cluttered UI
+- **Too limited** - Can't customize, can't export, can't share easily
 
-Mermaid is amazing for version-controlled, text-based diagrams. But when you need to tweak the layout, add custom styling, or just *move that one box slightly to the right* - you're stuck.
+Siren is different:
 
-Siren fixes this:
-
-- ✏️ **Write Mermaid** - Import any flowchart, sequence diagram, or class diagram
-- 🖱️ **Edit visually** - Drag, resize, restyle, rearrange
-- 📤 **Export back to Mermaid** - Keep your diagrams in code
-- 🔗 **Share instantly** - One URL, no account needed
+- ⚡ **Instant** - Opens in milliseconds, works offline
+- 🎨 **Visual** - Drag, resize, style - everything is editable
+- 🔗 **Shareable** - One URL contains your entire diagram
+- 📦 **Portable** - Single HTML file, zero dependencies
 
 ## Features
 
-### For Developers
-- **Mermaid import/export** - Paste your existing diagrams, edit them, export back
-- **LLM-friendly** - Generate diagrams with AI, then polish them visually
-- **Shareable URLs** - Entire diagram encoded in the link, no backend needed
-- **Keyboard shortcuts** - Fast workflow for power users
-
-### For Everyone
-- **Zero friction** - No signup, no install, just open and draw
-- **All the shapes** - Rectangles, pills, diamonds, circles, containers, text
-- **Smart connections** - Auto-routing, labels, colors, solid/dashed styles
+- **All the shapes** - Rectangles, pills, diamonds, circles, containers, text, arrows
+- **Smart connections** - Auto-routing with rounded corners, labels, colors
 - **Sequence diagrams** - Lifelines, messages, self-referencing loops
-- **Export options** - PNG, SVG, or Mermaid code
+- **Keyboard-first** - Fast workflow for power users
+- **Export anywhere** - PNG, SVG, or shareable link
 
-## Lightweight by Design
+### Plus: Mermaid Support
 
-**~3,200 lines. One HTML file. No build step. No dependencies.**
-
-- Loads instantly
-- Works offline
-- Fork it, hack it, host it yourself
+Already have diagrams in Mermaid? Import them, edit visually, export back to code. Best of both worlds.
 
 ## Quick Start
 
-1. Open [siren.sanath.dev](https://siren.sanath.dev)
-2. Press `M` to open Mermaid editor
-3. Paste your diagram or start fresh
-4. Press `Ctrl+Enter` to import
-5. Edit visually, then export
+**Online:** [siren.sanath.dev](https://siren.sanath.dev)
 
-### Keyboard Shortcuts
+**Local:**
+```bash
+# Clone and run
+git clone https://github.com/sanathsamarasinghe/siren.git
+cd siren
+npx serve
+```
+
+Or just download `index.html` and open it.
+
+## Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
-| `1-6` | Select shape tool |
+| `1-6` | Shape tools |
 | `V` | Select mode |
 | `A` | Auto-arrange |
-| `M` | Toggle Mermaid editor |
+| `M` | Mermaid editor |
 | `Ctrl+Z/Y` | Undo/Redo |
-| `Ctrl+C/V` | Copy/Paste |
 | `Delete` | Delete selected |
 
-## Compared to Other Tools
+## Lightweight by Design
 
-| Feature | Siren | Mermaid Live | Excalidraw | Draw.io |
-|---------|-------|--------------|------------|---------|
-| Mermaid import | ✅ | ✅ | ❌ | ❌ |
-| Visual editing | ✅ | ❌ | ✅ | ✅ |
-| Mermaid export | ✅ | ✅ | ❌ | ❌ |
-| No account needed | ✅ | ✅ | ✅ | ✅ |
-| Single file | ✅ | ❌ | ❌ | ❌ |
-| URL sharing | ✅ | ✅ | ✅ | ❌ |
-| Offline capable | ✅ | ❌ | ✅ | ❌ |
+**~3,200 lines. One HTML file. No build step.**
 
-## Use Cases
+- Loads instantly
+- Works offline  
+- Fork it, hack it, host it yourself
 
-- **Documentation** - Create diagrams that live in your repo as Mermaid, edit when needed
-- **AI workflows** - Let ChatGPT/Claude generate the structure, you handle the styling
-- **Quick sketches** - Faster than firing up a full diagramming app
-- **Teaching** - Show students both the code and visual representation
+## Deploy Your Own
 
-## Self-Hosting
+Works on any static host:
 
-Download `index.html` and open it. That's it.
+```bash
+# Netlify
+netlify deploy --prod --dir=.
 
-Or deploy to any static host:
-- Netlify
-- Vercel  
-- GitHub Pages
-- Your own server
+# Vercel
+vercel
+
+# GitHub Pages
+# Just push index.html to your repo
+```
 
 ## License
 
-MIT - Do whatever you want with it.
+MIT
 
 ---
 
