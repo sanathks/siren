@@ -2139,21 +2139,42 @@
       
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       
-      // Include all nodes
+      // Calculate lifeline height based on sequence messages
+      const sequenceMessages = connections.filter(c => c.isSequenceMessage);
+      const lifelineHeight = sequenceMessages.length > 0 
+        ? Math.max(...sequenceMessages.map(c => c.messageY || 0)) + 80 
+        : 300;
+      
+      // Include all nodes (and their lifelines if applicable)
       nodes.forEach(n => {
         minX = Math.min(minX, n.x);
         minY = Math.min(minY, n.y);
         maxX = Math.max(maxX, n.x + n.width);
-        maxY = Math.max(maxY, n.y + n.height);
+        
+        // For nodes with lifelines, extend bounds to include the lifeline
+        if (n.isParticipant || n.hasLifeline) {
+          maxY = Math.max(maxY, n.y + n.height + lifelineHeight);
+        } else {
+          maxY = Math.max(maxY, n.y + n.height);
+        }
       });
       
       // Include connection labels (they might extend beyond nodes)
       connections.forEach(c => {
-        if (c.label) {
-          const fromNode = nodes.find(n => n.id === c.from);
-          const toNode = nodes.find(n => n.id === c.to);
-          if (fromNode && toNode) {
-            // Rough estimate of label midpoint
+        const fromNode = nodes.find(n => n.id === c.from);
+        const toNode = nodes.find(n => n.id === c.to);
+        if (fromNode && toNode) {
+          if (c.isSequenceMessage) {
+            // Sequence message - include its Y position and full width
+            const y = c.messageY || 150;
+            const fromX = fromNode.x + fromNode.width / 2;
+            const toX = toNode.x + toNode.width / 2;
+            minX = Math.min(minX, Math.min(fromX, toX) - 20);
+            maxX = Math.max(maxX, Math.max(fromX, toX) + 20);
+            minY = Math.min(minY, y - 25);
+            maxY = Math.max(maxY, y + 15);
+          } else if (c.label) {
+            // Regular connection with label
             const midX = (fromNode.x + fromNode.width/2 + toNode.x + toNode.width/2) / 2;
             const midY = (fromNode.y + fromNode.height/2 + toNode.y + toNode.height/2) / 2;
             minX = Math.min(minX, midX - 50);
