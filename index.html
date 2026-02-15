@@ -3108,13 +3108,8 @@
         
         render();
         
-        // Center view on new content
-        const bounds = getContentBounds();
-        if (bounds) {
-          viewBox.x = bounds.minX - 100;
-          viewBox.y = bounds.minY - 100;
-          updateViewBox();
-        }
+        // Auto-arrange the imported diagram for clean presentation
+        arrangeDiagram();
         
       } catch (e) {
         errorDiv.textContent = 'Parse error: ' + e.message;
