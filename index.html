@@ -856,8 +856,8 @@
           
           return `<g class="connection-group ${isConnSelected ? 'selected' : ''}" data-id="${conn.id}" data-conn="${conn.id}" style="cursor:pointer">
             <line class="conn-hit" x1="${fromX}" y1="${y}" x2="${toX}" y2="${y}" stroke="transparent" stroke-width="25" data-conn="${conn.id}" style="pointer-events:stroke"/>
-            <line x1="${fromX}" y1="${y}" x2="${arrowX}" y2="${y}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-dasharray="${dashArray}" class="connection"/>
-            <path d="${arrowPath}" fill="${isAsync ? 'none' : strokeColor}" stroke="${strokeColor}" stroke-width="1.5"/>
+            <line x1="${fromX}" y1="${y}" x2="${arrowX}" y2="${y}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-dasharray="${dashArray}" class="connection" data-conn="${conn.id}" style="cursor:pointer"/>
+            <path d="${arrowPath}" fill="${isAsync ? 'none' : strokeColor}" stroke="${strokeColor}" stroke-width="1.5" data-conn="${conn.id}" style="cursor:pointer"/>
             ${labelEl}
           </g>`;
         }
@@ -969,7 +969,7 @@
         const hitArea = `<path class="conn-hit" d="${path}" fill="none" stroke="rgba(128,128,128,0.001)" stroke-width="30" data-conn="${conn.id}"/>`;
         
         const connDashArray = conn.strokeStyle === 'dashed' ? '5,3' : 'none';
-        return `<g class="connection-group ${isConnSelected ? 'selected' : ''}" data-id="${conn.id}" data-conn="${conn.id}" style="cursor:pointer">${hitArea}<path class="connection" d="${path}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-dasharray="${connDashArray}"/><path d="${arrow}" fill="${strokeColor}"/>${labelEl}</g>`;
+        return `<g class="connection-group ${isConnSelected ? 'selected' : ''}" data-id="${conn.id}" data-conn="${conn.id}" style="cursor:pointer">${hitArea}<path class="connection" d="${path}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-dasharray="${connDashArray}" data-conn="${conn.id}" style="cursor:pointer"/><path d="${arrow}" fill="${strokeColor}" data-conn="${conn.id}" style="cursor:pointer"/>${labelEl}</g>`;
       }).join('');
       
       // Nodes
