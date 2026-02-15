@@ -836,14 +836,14 @@
           
           // Self-referencing message (same lifeline)
           if (conn.from === conn.to) {
-            const loopWidth = 40;
-            const loopHeight = 25;
+            const loopWidth = 35;
+            const loopHeight = 30;
             const startY = y;
             const endY = y + loopHeight;
             const rightX = fromX + loopWidth;
             
-            // Curved loop path going right and down
-            const loopPath = `M${fromX},${startY} L${rightX},${startY} L${rightX},${endY} L${fromX + 3},${endY}`;
+            // Curved loop path using bezier curves
+            const loopPath = `M${fromX},${startY} C${rightX},${startY} ${rightX},${endY} ${fromX + 3},${endY}`;
             
             // Arrow pointing left at the end
             const arrowPath = `M${fromX + 3},${endY} L${fromX + 3 + aLen},${endY - aWidth} L${fromX + 3 + aLen},${endY + aWidth} Z`;
@@ -2072,9 +2072,23 @@
           // For lifeline connections, start from the lifeline center at the clicked Y position
           x1 = fromNode.x + fromNode.width / 2;
           y1 = connecting.lifelineY;
-          // Draw a straight horizontal line for sequence messages
-          const path = `M${x1},${y1} L${pos.x},${y1}`;
-          tempPath.setAttribute('d', path);
+          
+          // Check if hovering near same lifeline (self-reference)
+          const isSelfRef = Math.abs(pos.x - x1) < 30;
+          
+          if (isSelfRef) {
+            // Show curved loop preview for self-referencing
+            const loopWidth = 35;
+            const loopHeight = 30;
+            const endY = y1 + loopHeight;
+            const rightX = x1 + loopWidth;
+            const path = `M${x1},${y1} C${rightX},${y1} ${rightX},${endY} ${x1},${endY}`;
+            tempPath.setAttribute('d', path);
+          } else {
+            // Draw a straight horizontal line for sequence messages
+            const path = `M${x1},${y1} L${pos.x},${y1}`;
+            tempPath.setAttribute('d', path);
+          }
         } else {
           // Normal connector - curved path
           [x1, y1] = getConnectorPos(fromNode, connecting.fromSide, connecting.fromIdx);
