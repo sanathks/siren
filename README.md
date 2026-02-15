@@ -135,6 +135,19 @@ Add to Claude Desktop config:
 
 **Tools:** `create_diagram`, `create_diagram_json`, `export_diagram_image` *(experimental)*
 
+## Documentation
+
+Full documentation available in the [docs](docs/) folder:
+
+- [Getting Started](docs/getting-started.md)
+- [Nodes and Shapes](docs/nodes-and-shapes.md)
+- [Connections](docs/connections.md)
+- [Keyboard Shortcuts](docs/keyboard-shortcuts.md)
+- [Mermaid Import](docs/mermaid.md)
+- [API Reference](docs/api-reference.md)
+- [LLM Integration](docs/llm-integration.md)
+- [Examples](docs/examples.md)
+
 ## License
 
 MIT
