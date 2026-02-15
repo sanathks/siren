@@ -1628,7 +1628,7 @@
       }
     }
     
-    // Arrange flowchart - layered layout based on connections with crossing reduction
+    // Arrange flowchart - layered layout based on connections
     function arrangeFlowchart() {
       // Skip line/arrow shapes - they don't need arranging
       const flowNodes = nodes.filter(n => n.type !== 'line');
@@ -1637,11 +1637,9 @@
       // Build adjacency map
       const outgoing = {};
       const incoming = {};
-      const nodeMap = {};
       flowNodes.forEach(n => {
         outgoing[n.id] = [];
         incoming[n.id] = [];
-        nodeMap[n.id] = n;
       });
       
       connections.filter(c => !c.isSequenceMessage).forEach(c => {
@@ -1655,95 +1653,50 @@
       let roots = flowNodes.filter(n => incoming[n.id].length === 0);
       if (roots.length === 0) roots = [flowNodes[0]]; // Fallback: use first node
       
-      // BFS to assign layers - use longest path for better distribution
-      const nodeLayer = {};
+      // BFS to assign layers
+      const layers = {};
       const visited = new Set();
-      
-      // First pass: assign minimum layer
       let queue = roots.map(n => ({ id: n.id, layer: 0 }));
+      
       while (queue.length > 0) {
         const { id, layer } = queue.shift();
-        if (nodeLayer[id] !== undefined && nodeLayer[id] >= layer) continue;
-        nodeLayer[id] = layer;
+        if (visited.has(id)) continue;
+        visited.add(id);
         
-        outgoing[id].forEach(targetId => {
-          queue.push({ id: targetId, layer: layer + 1 });
-        });
-      }
-      
-      // Assign unvisited nodes
-      flowNodes.forEach(n => {
-        if (nodeLayer[n.id] === undefined) nodeLayer[n.id] = 0;
-      });
-      
-      // Build layers object
-      const layers = {};
-      Object.entries(nodeLayer).forEach(([id, layer]) => {
         if (!layers[layer]) layers[layer] = [];
         layers[layer].push(id);
-      });
-      
-      // Barycenter method for crossing reduction (multiple passes)
-      const layerNums = Object.keys(layers).map(Number).sort((a, b) => a - b);
-      
-      // Initial positioning
-      const nodePos = {};
-      layerNums.forEach(layerNum => {
-        layers[layerNum].forEach((id, i) => {
-          nodePos[id] = i;
-        });
-      });
-      
-      // Multiple passes of barycenter reordering
-      for (let pass = 0; pass < 4; pass++) {
-        // Forward pass
-        for (let i = 1; i < layerNums.length; i++) {
-          const layer = layerNums[i];
-          layers[layer].forEach(id => {
-            const parents = incoming[id];
-            if (parents.length > 0) {
-              const avgPos = parents.reduce((sum, p) => sum + (nodePos[p] || 0), 0) / parents.length;
-              nodePos[id] = avgPos;
-            }
-          });
-          // Sort layer by barycenter position
-          layers[layer].sort((a, b) => (nodePos[a] || 0) - (nodePos[b] || 0));
-          // Reassign integer positions
-          layers[layer].forEach((id, idx) => nodePos[id] = idx);
-        }
         
-        // Backward pass
-        for (let i = layerNums.length - 2; i >= 0; i--) {
-          const layer = layerNums[i];
-          layers[layer].forEach(id => {
-            const children = outgoing[id];
-            if (children.length > 0) {
-              const avgPos = children.reduce((sum, c) => sum + (nodePos[c] || 0), 0) / children.length;
-              nodePos[id] = avgPos;
-            }
-          });
-          layers[layer].sort((a, b) => (nodePos[a] || 0) - (nodePos[b] || 0));
-          layers[layer].forEach((id, idx) => nodePos[id] = idx);
-        }
+        outgoing[id].forEach(targetId => {
+          if (!visited.has(targetId)) {
+            queue.push({ id: targetId, layer: layer + 1 });
+          }
+        });
       }
       
-      // Position nodes with improved spacing
+      // Add any unvisited nodes to layer 0
+      flowNodes.forEach(n => {
+        if (!visited.has(n.id)) {
+          if (!layers[0]) layers[0] = [];
+          layers[0].push(n.id);
+        }
+      });
+      
+      // Position nodes by layer with better spacing
       const startX = 100;
       const startY = 100;
-      const layerSpacingY = 120; // More vertical space
-      const nodeSpacingX = 180; // More horizontal space
-      const maxLayerWidth = Math.max(...Object.values(layers).map(l => l.length));
+      const layerSpacingY = 110;
+      const nodeSpacingX = 170;
       
-      layerNums.forEach(layerNum => {
+      Object.keys(layers).sort((a, b) => a - b).forEach(layerNum => {
         const layerNodes = layers[layerNum];
         const layerWidth = layerNodes.length * nodeSpacingX;
-        const layerStartX = startX + (maxLayerWidth * nodeSpacingX - layerWidth) / 2;
+        const layerStartX = startX + (Math.max(...Object.values(layers).map(l => l.length)) * nodeSpacingX - layerWidth) / 2;
         
         layerNodes.forEach((nodeId, i) => {
-          const node = nodeMap[nodeId];
+          const node = nodes.find(n => n.id === nodeId);
           if (node) {
             node.x = layerStartX + i * nodeSpacingX;
-            node.y = startY + layerNum * layerSpacingY;
+            node.y = startY + parseInt(layerNum) * layerSpacingY;
           }
         });
       });
