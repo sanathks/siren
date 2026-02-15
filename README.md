@@ -5,55 +5,43 @@
 </p>
 
 <p align="center">
-  <strong>The best of both worlds: Mermaid syntax + visual editing.</strong><br>
-  <sub>Create, edit, and share diagrams instantly.</sub>
+  <strong>Visual diagram editor with Mermaid support.</strong><br>
+  <sub>Draw, edit, share - no account required.</sub>
 </p>
 
 <p align="center">
-  <a href="https://draph.sanath.dev"><strong>Try it now →</strong></a>
+  <a href="https://draph.sanath.dev"><strong>Try it now</strong></a>
 </p>
 
 ---
 
-## Create Diagrams Fast
-
-Open the browser. Start drawing. Share instantly.
-
-No account. No install. No learning curve.
-
-```bash
-# Run locally in one command
-npx serve
-```
-
 ## Why Draph?
 
-Most diagram tools are either:
-- **Too heavy** - Login walls, slow load times, cluttered UI
-- **Too limited** - Can't customize, can't export, can't share easily
-
-Draph is different:
-
-- ⚡ **Instant** - Opens in milliseconds, works offline
-- 🎨 **Visual** - Drag, resize, style - everything is editable
-- 🔗 **Shareable** - One URL contains your entire diagram
-- 📦 **Portable** - Single HTML file, zero dependencies
+- **Instant** - Opens in milliseconds, works offline
+- **Visual** - Drag, connect, style - everything editable on canvas
+- **Shareable** - Short URLs for any diagram (`/d/abc123`)
+- **AI-native** - API + MCP server for LLM integrations
 
 ## Features
 
-- **All the shapes** - Rectangles, pills, diamonds, circles, containers, text, arrows
-- **Smart connections** - Auto-routing with rounded corners, labels, colors
-- **Sequence diagrams** - Lifelines, messages, self-referencing loops
-- **Keyboard-first** - Fast workflow for power users
-- **Export anywhere** - PNG, SVG, or shareable link
+### Shapes & Connections
+- **Node types** - Rectangle, pill, diamond, circle, container (grouping), text, arrow
+- **Smart connections** - Drag from any edge, auto-routing with rounded/straight modes
+- **Quick connect** - Drop a connection on empty canvas to choose node type
+- **Fill styles** - Outline, infill, stripe, grid patterns
+- **Colors** - Tokyo Night Storm palette built-in
 
-### Plus: Mermaid Support
+### Diagram Types
+- **Flowcharts** - Standard flow with decisions, loops, groups
+- **Sequence diagrams** - Lifelines, messages, loop/alt/opt frames
+- **Class diagrams** - UML classes with properties and methods
+- **Architecture diagrams** - Containers for grouping related components
 
-Already have diagrams in Mermaid? Import them, edit visually, export back to code. Best of both worlds.
-
-### Plus: AI-Native
-
-Built for LLMs from day one. API endpoints, MCP server for Claude Desktop, and `/llm.txt` context file for custom integrations.
+### Import/Export
+- **Mermaid import** - Paste Mermaid code, get editable diagram
+- **PNG/SVG export** - High-res images for docs
+- **Share URLs** - Every diagram gets a short URL
+- **JSON** - Full control over positioning
 
 ## Quick Start
 
@@ -61,49 +49,58 @@ Built for LLMs from day one. API endpoints, MCP server for Claude Desktop, and `
 
 **Local:**
 ```bash
-git clone https://github.com/user/draph.git
+git clone https://github.com/sanathks/draph.git
 cd draph
 npx serve
 ```
 
-Or just download `index.html` and open it.
+Or just open `index.html` directly.
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `V` | Select tool |
+| `1` | Rectangle |
+| `2` | Pill |
+| `3` | Diamond |
+| `4` | Circle |
+| `5` | Container |
+| `6` | Text |
+| `7` | Arrow/Line |
+| `A` | Auto-arrange |
+| `M` | Mermaid import |
+| `G` | Toggle grid snap |
+| `Ctrl+Z` | Undo |
+| `Ctrl+Y` | Redo |
+| `Ctrl+C/V` | Copy/Paste |
+| `Delete` | Delete selected |
+| `Escape` | Deselect |
 
 ## AI & LLM Integration
 
-Draph is built for AI agents. Generate diagrams programmatically via API or connect directly to Claude Desktop via MCP.
+Draph is built for AI agents. Generate diagrams via API or connect to Claude Desktop via MCP.
 
-### API Endpoints
+### API
 
-**Create shareable diagram:**
+**Create diagram (returns short URL):**
 ```bash
 curl -X POST https://draph.sanath.dev/api/diagram \
   -H "Content-Type: application/json" \
   -d '{"mermaid": "flowchart TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Done]"}'
 ```
 
-Returns:
-```json
-{
-  "url": "https://draph.sanath.dev/#eyJuIjpb...",
-  "data": { "n": [...], "c": [...] }
-}
-```
-
 **Export as PNG:**
 ```bash
 curl -X POST https://draph.sanath.dev/api/diagram/image \
   -H "Content-Type: application/json" \
-  -d '{"mermaid": "flowchart TD\n  A[Start] --> B[End]"}' \
+  -d '{"nodes": [...], "connections": [...]}' \
   --output diagram.png
 ```
 
 ### MCP Server (Claude Desktop)
 
-Connect Draph directly to Claude Desktop for natural language diagram creation.
-
-**Setup:**
-
-Add to your Claude Desktop config (`~/.config/claude/claude_desktop_config.json` on Linux/Mac):
+Add to Claude Desktop config:
 
 ```json
 {
@@ -116,35 +113,13 @@ Add to your Claude Desktop config (`~/.config/claude/claude_desktop_config.json`
 }
 ```
 
-**Available tools:**
-- `create_diagram` - Create diagram from Mermaid code
-- `create_diagram_json` - Create diagram from JSON nodes/connections
-- `export_diagram_image` - Export diagram as PNG
+**Tools:** `create_diagram`, `create_diagram_json`, `export_diagram_image`
 
-**Example prompt:**
-> "Create a flowchart showing user authentication flow with login, validation, and redirect steps"
+### LLM Context
 
-Claude will generate the diagram and return a shareable URL.
+For custom integrations: `https://draph.sanath.dev/llm.txt`
 
-### LLM Context File
-
-For custom AI integrations, fetch the context file:
-```
-https://draph.sanath.dev/llm.txt
-```
-
-Contains color palette, JSON schema, and API documentation optimized for LLM consumption.
-
-## Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| `1-6` | Shape tools |
-| `V` | Select mode |
-| `A` | Auto-arrange |
-| `M` | Mermaid editor |
-| `Ctrl+Z/Y` | Undo/Redo |
-| `Delete` | Delete selected |
+Contains full schema, color palette, and examples.
 
 ## License
 
