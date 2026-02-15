@@ -574,14 +574,38 @@
         nodes = data.n || [];
         connections = data.c || [];
         idCounter = Math.max(...nodes.map(n => parseInt(n.id.slice(1)) || 0), 0) + 1;
+        const rect = canvas.getBoundingClientRect();
         // Restore viewport position if saved
         if (data.v) {
-          const rect = canvas.getBoundingClientRect();
           viewBox.x = data.v.x || 0;
           viewBox.y = data.v.y || 0;
           zoom = data.v.z || 1;
           viewBox.w = rect.width * zoom;
           viewBox.h = rect.height * zoom;
+          updateViewBox();
+        } else if (nodes.length > 0) {
+          // Auto-center on diagram content if no saved viewport
+          const padding = 50;
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          nodes.forEach(n => {
+            minX = Math.min(minX, n.x);
+            minY = Math.min(minY, n.y);
+            maxX = Math.max(maxX, n.x + n.width);
+            maxY = Math.max(maxY, n.y + (n.height || 0) + (n.hasLifeline ? 300 : 0));
+          });
+          const contentW = maxX - minX + padding * 2;
+          const contentH = maxY - minY + padding * 2;
+          // Fit content with some margin
+          const scaleX = rect.width / contentW;
+          const scaleY = rect.height / contentH;
+          zoom = Math.min(Math.max(1 / Math.min(scaleX, scaleY), 0.5), 2);
+          viewBox.w = rect.width * zoom;
+          viewBox.h = rect.height * zoom;
+          // Center on content
+          const centerX = (minX + maxX) / 2;
+          const centerY = (minY + maxY) / 2;
+          viewBox.x = centerX - viewBox.w / 2;
+          viewBox.y = centerY - viewBox.h / 2;
           updateViewBox();
         }
       } catch (e) {
