@@ -2322,9 +2322,38 @@
     
     // Export
     function downloadSVG() {
+      const bounds = getContentBounds();
+      if (!bounds) {
+        alert('Nothing to export!');
+        return;
+      }
+      
+      const padding = 40;
+      const cropX = bounds.minX - padding;
+      const cropY = bounds.minY - padding;
+      const cropW = (bounds.maxX - bounds.minX) + padding * 2;
+      const cropH = (bounds.maxY - bounds.minY) + padding * 2;
+      
       const clone = canvas.cloneNode(true);
-      clone.querySelectorAll('.connector, .resize-handle, #selectBox, #drawPreview').forEach(el => el.remove());
-      clone.querySelector('#gridBg').remove();
+      clone.querySelectorAll('.connector, .resize-handle, #selectBox, #drawPreview, .lifeline-connector, .line-handle').forEach(el => el.remove());
+      const gridBg = clone.querySelector('#gridBg');
+      if (gridBg) gridBg.remove();
+      
+      // Set viewBox and dimensions to cropped area
+      clone.setAttribute('viewBox', `${cropX} ${cropY} ${cropW} ${cropH}`);
+      clone.setAttribute('width', cropW);
+      clone.setAttribute('height', cropH);
+      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      
+      // Add background
+      const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      bg.setAttribute('x', cropX);
+      bg.setAttribute('y', cropY);
+      bg.setAttribute('width', cropW);
+      bg.setAttribute('height', cropH);
+      bg.setAttribute('fill', COLORS.bg);
+      clone.insertBefore(bg, clone.firstChild);
+      
       const blob = new Blob([clone.outerHTML], { type: 'image/svg+xml' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
