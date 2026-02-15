@@ -126,7 +126,7 @@ Containers render as dashed-border boxes. Place them BEFORE the nodes they conta
 | `label` | string | Display text |
 | `x`, `y` | number | Position in pixels |
 | `width`, `height` | number | Size in pixels |
-| `color` | hex | Fill color |
+| `color` | hex | Fill color (omit for no fill, don't use "transparent") |
 | `outlineColor` | hex | Border color |
 | `fillStyle` | string | `outline`, `infill`, `stripe`, or `grid` |
 
@@ -316,3 +316,5 @@ Tools: `create_diagram`, `create_diagram_json`, `export_diagram_image`
 2. **Use JSON for complex layouts** - Mermaid is great for simple flows; JSON gives precise positioning
 3. **Share short URLs** - Always use the `url` field, not `editUrl`
 4. **Consistent spacing** - Use multiples of 20px for grid alignment
+5. **No "transparent"** - Omit `color` property instead of `"transparent"`. For outline-only nodes, set `fillStyle: "outline"`
+6. **Container styling** - Containers look best with just `outlineColor` set (no `color`). The label uses the outline color.
