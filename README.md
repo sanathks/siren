@@ -84,12 +84,22 @@ Draph is built for AI agents. Generate diagrams via API or connect to Claude Des
 
 ### API
 
-**Create diagram (returns short URL):**
+**Create diagram:**
 ```bash
 curl -X POST https://draph.sanath.dev/api/diagram \
   -H "Content-Type: application/json" \
   -d '{"mermaid": "flowchart TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Done]"}'
 ```
+
+Returns:
+```json
+{
+  "url": "https://draph.sanath.dev/d/abc123",
+  "editUrl": "https://draph.sanath.dev/#eyJuIjpb..."
+}
+```
+- `url` - Short shareable link (for LLMs/sharing)
+- `editUrl` - Direct editor link with full data
 
 **Export as PNG:**
 ```bash
