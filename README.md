@@ -5,7 +5,8 @@
 </p>
 
 <p align="center">
-  <strong>Beautiful diagrams in seconds. No signup. No friction.</strong>
+  <strong>The best of both worlds: Mermaid syntax + visual editing.</strong><br>
+  <sub>Create, edit, and share diagrams instantly.</sub>
 </p>
 
 <p align="center">
