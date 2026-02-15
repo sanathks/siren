@@ -1749,7 +1749,7 @@
     
     // Event handlers
     function onNodeMouseDown(e) {
-      if (e.target.classList.contains('connector') || e.target.classList.contains('resize-handle')) return;
+      if (e.target.classList.contains('connector') || e.target.classList.contains('resize-handle') || e.target.classList.contains('lifeline-connector')) return;
       
       // Clicking on a node always switches to select mode and selects it
       if (currentTool !== 'select') {
