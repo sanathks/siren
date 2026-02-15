@@ -4,20 +4,20 @@ Siren is a visual diagram editor. AI agents can create diagrams programmatically
 
 ## Color Palette (Tokyo Night Storm)
 
-Use these colors for consistent styling:
+Available colors:
 
-| Color     | Hex       | Use Case                     |
-|-----------|-----------|------------------------------|
-| Background| `#24283b` | Canvas background            |
-| Foreground| `#c0caf5` | Text, labels                 |
-| Blue      | `#7aa2f7` | Primary nodes, default fill  |
-| Cyan      | `#7dcfff` | Secondary nodes, highlights  |
-| Green     | `#9ece6a` | Success, start nodes         |
-| Red       | `#f7768e` | Error, end nodes             |
-| Yellow    | `#e0af68` | Warning, decision nodes      |
-| Magenta   | `#bb9af7` | Accent, special nodes        |
-| Orange    | `#ff9e64` | Attention, action nodes      |
-| Border    | `#414868` | Node outlines, lines         |
+| Color     | Hex       |
+|-----------|-----------|
+| Background| `#24283b` |
+| Foreground| `#c0caf5` |
+| Blue      | `#7aa2f7` |
+| Cyan      | `#7dcfff` |
+| Green     | `#9ece6a` |
+| Red       | `#f7768e` |
+| Yellow    | `#e0af68` |
+| Magenta   | `#bb9af7` |
+| Orange    | `#ff9e64` |
+| Border    | `#414868` |
 
 ## Quick Start
 
@@ -145,15 +145,6 @@ Optional parameters:
 }
 ```
 
-### Recommended Node Colors by Type
-
-- **Start nodes:** `#9ece6a` (green)
-- **End nodes:** `#f7768e` (red)
-- **Decision nodes:** `#e0af68` (yellow)
-- **Process nodes:** `#7aa2f7` (blue)
-- **Action nodes:** `#ff9e64` (orange)
-- **Special nodes:** `#bb9af7` (magenta)
-- **Info nodes:** `#7dcfff` (cyan)
 ```
 
 ### Connection Properties
