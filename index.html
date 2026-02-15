@@ -291,8 +291,8 @@
           </div>
         </div>
         
-        <!-- Fill style dropdown -->
-        <div class="relative" style="display:inline-block">
+        <!-- Fill style dropdown (hidden for line nodes) -->
+        <div id="fillStyleGroup" class="relative" style="display:inline-block">
           <button id="fillStyleBtn" onclick="toggleFillDropdown()" class="flex items-center justify-center" style="width:28px;height:28px;background:#1a1b26;border:1px solid #414868;border-radius:4px;font-size:16px;color:#a9b1d6" title="Fill Style">●</button>
           <div id="fillDropdown" class="hidden absolute bg-storm-bg2 border border-storm-fg/20 rounded shadow-lg z-50" style="top:32px;left:0;padding:4px">
             <button onclick="setFillStyle('outline');closeFillDropdown()" class="fill-style-btn block w-full text-left text-xs text-storm-fg hover:bg-storm-accent/20 rounded" style="padding:4px 8px" data-style="outline">○ Outline</button>
@@ -302,8 +302,8 @@
           </div>
         </div>
         
-        <!-- Fill color -->
-        <div class="relative" style="display:inline-block">
+        <!-- Fill color (hidden for line nodes) -->
+        <div id="fillColorGroup" class="relative" style="display:inline-block">
           <button id="fillColorBtn" onclick="toggleFillColorPalette()" title="Fill Color" style="width:24px;height:24px;border-radius:50%;background:#24283b;border:2px solid #414868"></button>
           <div id="fillColorPalette" class="hidden absolute bg-storm-bg2 border border-storm-fg/20 rounded shadow-lg z-50" style="top:32px;left:50%;transform:translateX(-50%);padding:8px">
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
@@ -316,6 +316,21 @@
               <button onclick="setNodeColor('#7dcfff');closeFillColorPalette()" style="width:22px;height:22px;border-radius:50%;background:#7dcfff;border:none"></button>
               <button onclick="setNodeColor('#ff9e64');closeFillColorPalette()" style="width:22px;height:22px;border-radius:50%;background:#ff9e64;border:none"></button>
             </div>
+          </div>
+        </div>
+        
+        <!-- Line style dropdown (only for line nodes) -->
+        <div id="lineStyleGroup" class="relative hidden" style="display:none">
+          <button id="lineStyleBtn" onclick="toggleLineStyleDropdown()" class="flex items-center justify-center" style="width:28px;height:28px;background:#1a1b26;border:1px solid #414868;border-radius:4px;color:#a9b1d6" title="Line Style">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="4" y1="12" x2="20" y2="12"/></svg>
+          </button>
+          <div id="lineStyleDropdown" class="hidden absolute bg-storm-bg2 border border-storm-fg/20 rounded shadow-lg z-50" style="top:32px;left:0;padding:4px;min-width:80px">
+            <button onclick="setLineStyle('solid');closeLineStyleDropdown()" class="flex items-center gap-2 w-full text-left text-xs text-storm-fg hover:bg-storm-accent/20 rounded" style="padding:6px 8px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:8px"><line x1="0" y1="4" x2="24" y2="4"/></svg> Solid
+            </button>
+            <button onclick="setLineStyle('dashed');closeLineStyleDropdown()" class="flex items-center gap-2 w-full text-left text-xs text-storm-fg hover:bg-storm-accent/20 rounded" style="padding:6px 8px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4,2" style="width:16px;height:8px"><line x1="0" y1="4" x2="24" y2="4"/></svg> Dashed
+            </button>
           </div>
         </div>
         
@@ -1003,8 +1018,11 @@
           const y1 = node.y;
           const x2 = node.x + node.width;
           const y2 = node.y + node.height;
-          const lineColor = node.color || COLORS.fg;
+          // Use outlineColor for line color (not fill color)
+          const lineColor = node.outlineColor || COLORS.fg;
           const lineWidth = isSelected ? 2.5 : 1.5;
+          const isDashed = node.lineStyle === 'dashed';
+          const dashArray = isDashed ? '6,4' : 'none';
           
           // Calculate arrow head
           const angle = Math.atan2(y2 - y1, x2 - x1);
@@ -1034,10 +1052,11 @@
             <text x="${midX}" y="${midY + 3}" fill="${COLORS.fg}" font-size="11" font-family="system-ui, sans-serif" text-anchor="middle">${esc(node.label)}</text>
           ` : '';
           
+          const displayColor = isSelected ? COLORS.accent : lineColor;
           shape = `${hitArea}
             <line x1="${x1}" y1="${y1}" x2="${x2 - Math.cos(angle) * 3}" y2="${y2 - Math.sin(angle) * 3}" 
-              stroke="${isSelected ? COLORS.accent : lineColor}" stroke-width="${lineWidth}" stroke-linecap="round" class="node-border"/>
-            <path d="${arrow}" fill="${isSelected ? COLORS.accent : lineColor}"/>
+              stroke="${displayColor}" stroke-width="${lineWidth}" stroke-linecap="round" stroke-dasharray="${dashArray}" class="node-border"/>
+            <path d="${arrow}" fill="${displayColor}"/>
             ${labelEl}
             ${handles}`;
         } else if (node.isClass) {
@@ -1190,6 +1209,18 @@
         closeFillDropdown();
         closeFillColorPalette();
         closeOutlineColorPalette();
+        closeLineStyleDropdown();
+        
+        // Show/hide controls based on node type
+        const isLine = node.type === 'line';
+        document.getElementById('fillStyleGroup').style.display = isLine ? 'none' : 'inline-block';
+        document.getElementById('fillColorGroup').style.display = isLine ? 'none' : 'inline-block';
+        document.getElementById('lineStyleGroup').style.display = isLine ? 'inline-block' : 'none';
+        
+        // Update line style button
+        if (isLine) {
+          updateLineStyleButton(node);
+        }
       } else {
         floatingToolbar.classList.add('hidden');
       }
@@ -1394,6 +1425,7 @@
       if (except !== 'fill') closeFillDropdown();
       if (except !== 'fillColor') closeFillColorPalette();
       if (except !== 'outlineColor') closeOutlineColorPalette();
+      if (except !== 'lineStyle') closeLineStyleDropdown();
     }
     
     function toggleFillDropdown() { document.getElementById('fillDropdown').classList.toggle('hidden'); closeOtherPalettes('fill'); }
@@ -1402,6 +1434,33 @@
     function closeFillColorPalette() { document.getElementById('fillColorPalette').classList.add('hidden'); }
     function toggleOutlineColorPalette() { document.getElementById('outlineColorPalette').classList.toggle('hidden'); closeOtherPalettes('outlineColor'); }
     function closeOutlineColorPalette() { document.getElementById('outlineColorPalette').classList.add('hidden'); }
+    
+    // Line style functions (for arrow/line nodes)
+    function toggleLineStyleDropdown() { 
+      document.getElementById('lineStyleDropdown').classList.toggle('hidden'); 
+      closeOtherPalettes('lineStyle'); 
+    }
+    function closeLineStyleDropdown() { 
+      const dd = document.getElementById('lineStyleDropdown');
+      if (dd) dd.classList.add('hidden'); 
+    }
+    function setLineStyle(style) {
+      const node = nodes.find(n => n.id === selectedId);
+      if (node && node.type === 'line') {
+        node.lineStyle = style;
+        updateLineStyleButton(node);
+        saveState();
+        render();
+      }
+    }
+    function updateLineStyleButton(node) {
+      const btn = document.getElementById('lineStyleBtn');
+      if (!btn) return;
+      const isDashed = node.lineStyle === 'dashed';
+      btn.innerHTML = isDashed ? 
+        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3,2" style="width:14px;height:14px"><line x1="4" y1="12" x2="20" y2="12"/></svg>` :
+        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="4" y1="12" x2="20" y2="12"/></svg>`;
+    }
     
     function clearCanvas() {
       if (confirm('Clear entire canvas?')) {
