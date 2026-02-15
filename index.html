@@ -825,8 +825,9 @@
           const strokeColor = conn.color || (isConnSelected ? COLORS.accent : COLORS.fg);
           const strokeWidth = isConnSelected ? 2.5 : 1.5;
           
-          // Arrow type
-          const isDashed = conn.arrow?.includes('--');
+          // Arrow type - strokeStyle overrides arrow syntax if explicitly set
+          const arrowIsDashed = conn.arrow?.includes('--');
+          const isDashed = conn.strokeStyle ? conn.strokeStyle === 'dashed' : arrowIsDashed;
           const isAsync = conn.arrow?.includes(')');
           const dashArray = isDashed ? '5,3' : 'none';
           
@@ -967,7 +968,8 @@
         // Wider path for easier clicking (nearly invisible)
         const hitArea = `<path class="conn-hit" d="${path}" fill="none" stroke="rgba(128,128,128,0.001)" stroke-width="30" data-conn="${conn.id}"/>`;
         
-        return `<g class="connection-group ${isConnSelected ? 'selected' : ''}" data-id="${conn.id}" data-conn="${conn.id}" style="cursor:pointer">${hitArea}<path class="connection" d="${path}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}"/><path d="${arrow}" fill="${strokeColor}"/>${labelEl}</g>`;
+        const connDashArray = conn.strokeStyle === 'dashed' ? '5,3' : 'none';
+        return `<g class="connection-group ${isConnSelected ? 'selected' : ''}" data-id="${conn.id}" data-conn="${conn.id}" style="cursor:pointer">${hitArea}<path class="connection" d="${path}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-dasharray="${connDashArray}"/><path d="${arrow}" fill="${strokeColor}"/>${labelEl}</g>`;
       }).join('');
       
       // Nodes
@@ -1350,7 +1352,9 @@
       
       connLabelInput.value = conn.label || '';
       document.getElementById('connColorBtn').style.borderColor = conn.color || '#a9b1d6';
-      updateConnLineStyleBtns(conn.lineStyle || 'solid');
+      // For sequence messages, detect default from arrow syntax
+      const defaultStroke = conn.isSequenceMessage && conn.arrow?.includes('--') ? 'dashed' : 'solid';
+      updateConnLineStyleBtns(conn.strokeStyle || defaultStroke);
       
       // Position relative to canvas container
       connToolbar.style.left = `${Math.max(100, Math.min(screenX, containerRect.width - 150))}px`;
@@ -1401,7 +1405,7 @@
     function setConnLineStyle(style) {
       const conn = connections.find(c => c.id === selectedConnId);
       if (conn) {
-        conn.lineStyle = style;
+        conn.strokeStyle = style;
         updateConnLineStyleBtns(style);
         saveState();
         render();
