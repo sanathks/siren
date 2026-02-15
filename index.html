@@ -36,12 +36,16 @@
     .connector { cursor: crosshair; opacity: 0; pointer-events: none; transition: opacity 0.15s; }
     .node:hover .connector { opacity: 0.4; pointer-events: auto; }
     .show-connectors .connector { opacity: 0.4; pointer-events: auto; }
+    .show-connectors .lifeline-connector { opacity: 0.4; pointer-events: auto; }
     .connector:hover { opacity: 1; fill: #7aa2f7 !important; }
+    .lifeline-connector { opacity: 0; transition: opacity 0.15s; pointer-events: auto; }
+    .node:hover .lifeline-connector { opacity: 0.3; }
+    .lifeline-connector:hover { opacity: 1 !important; fill: rgba(122, 162, 247, 0.3) !important; }
     .connection { pointer-events: stroke; cursor: pointer; stroke-linecap: round; }
     .connection-group { cursor: pointer; }
     .conn-hit { pointer-events: stroke; cursor: pointer; }
     .connection-group:hover path.connection { stroke-width: 2.5 !important; }
-    .connection-group.selected path.connection { stroke-width: 2.5; }
+    .connection-group.selected path.connection { stroke-width: 3; stroke: #7aa2f7 !important; }
     .container-fill { pointer-events: none; }
     .resize-handle { cursor: se-resize; opacity: 0; }
     .node.selected .resize-handle { opacity: 1; }
@@ -77,24 +81,26 @@
 <body class="h-screen flex flex-col">
   <!-- Top Toolbar -->
   <header class="h-14 bg-storm-bg2 border-b border-storm-bg flex items-center px-4 z-20">
-    <!-- Left: Logo + Undo/Redo -->
-    <div class="flex items-center gap-1">
+    <!-- Left: Logo -->
+    <div class="flex items-center">
       <div class="text-storm-accent font-bold text-lg mr-2">DS</div>
-      <button class="tool-btn" onclick="undo()" title="Undo (Cmd+Z)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 10h10a5 5 0 1 1 0 10H9"/><polyline points="7 6 3 10 7 14"/>
-        </svg>
-      </button>
-      <button class="tool-btn" onclick="redo()" title="Redo (Cmd+Shift+Z)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 10h-10a5 5 0 1 0 0 10h4"/><polyline points="17 6 21 10 17 14"/>
-        </svg>
-      </button>
     </div>
     
-    <!-- Center: Tools -->
+    <!-- Center: All Tools -->
     <div class="flex-1 flex justify-center">
       <div class="flex items-center gap-1 bg-storm-bg rounded-lg p-1">
+        <!-- Undo/Redo -->
+        <button class="tool-btn" onclick="undo()" title="Undo (Cmd+Z)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 10h10a5 5 0 1 1 0 10H9"/><polyline points="7 6 3 10 7 14"/>
+          </svg>
+        </button>
+        <button class="tool-btn" onclick="redo()" title="Redo (Cmd+Shift+Z)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10h-10a5 5 0 1 0 0 10h4"/><polyline points="17 6 21 10 17 14"/>
+          </svg>
+        </button>
+        <div class="divider"></div>
         <!-- Select tool -->
         <button class="tool-btn active" id="tool-select" onclick="setTool('select')" title="Select (V)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -121,11 +127,10 @@
         <button class="tool-btn" id="tool-text" onclick="setTool('text')" title="Text (T)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
         </button>
-        <div class="divider"></div>
-        <!-- Arrow tool -->
-        <button class="tool-btn" id="tool-arrow" onclick="setTool('arrow')" title="Arrow (6)">
+        <button class="tool-btn" id="tool-line" onclick="setTool('line')" title="Arrow Line (6)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M5 12h14M13 6l6 6-6 6"/>
+            <line x1="5" y1="19" x2="19" y2="5"/>
+            <polyline points="12 5 19 5 19 12"/>
           </svg>
         </button>
         <div class="divider"></div>
@@ -148,38 +153,71 @@
             <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
           </svg>
         </button>
+        <div class="divider"></div>
+        <!-- Code toggle -->
+        <button id="mermaidToggle" class="tool-btn" onclick="toggleMermaidSidebar()" title="Mermaid Code (M)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </button>
+        <div class="divider"></div>
+        <!-- Export -->
+        <div class="dropdown" id="exportDropdown">
+          <button class="tool-btn" onclick="toggleDropdown('exportDropdown')" title="Export (9)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+          <div class="dropdown-menu">
+            <div class="dropdown-item" onclick="downloadPNG();closeDropdowns()">PNG</div>
+            <div class="dropdown-item" onclick="downloadSVG();closeDropdowns()">SVG</div>
+          </div>
+        </div>
+        <!-- Share -->
+        <button class="tool-btn" style="background:rgba(158,206,106,0.2);color:#9ece6a" onclick="shareDiagram()" title="Copy Share Link (0)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+        </button>
+        <!-- Clear -->
+        <button class="tool-btn" style="background:rgba(247,118,142,0.15);color:#f7768e" onclick="clearCanvas()" title="Clear Canvas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
       </div>
     </div>
     
-    <!-- Right: Actions -->
-    <div class="flex items-center gap-1">
-      <button class="tool-btn" onclick="clearCanvas()" title="Clear Canvas">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-        </svg>
-      </button>
-      <div class="dropdown" id="exportDropdown">
-        <button class="tool-btn" onclick="toggleDropdown('exportDropdown')" title="Export (9)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-        </button>
-        <div class="dropdown-menu" style="right:0;left:auto;transform:none">
-          <div class="dropdown-item" onclick="downloadPNG();closeDropdowns()">PNG</div>
-          <div class="dropdown-item" onclick="downloadSVG();closeDropdowns()">SVG</div>
-        </div>
-      </div>
-      <button class="tool-btn" style="background:rgba(158,206,106,0.2);color:#9ece6a" onclick="shareDiagram()" title="Copy Share Link (0)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-        </svg>
-      </button>
-    </div>
+    <!-- Right: empty for balance -->
+    <div class="flex items-center" style="width:32px"></div>
   </header>
   
-  <!-- Canvas -->
-  <main id="canvasContainer" class="flex-1 relative overflow-hidden">
+  <!-- Main container with sidebar + canvas -->
+  <main class="flex-1 flex overflow-hidden">
+    <!-- Mermaid Code Sidebar (Left) -->
+    <div id="mermaidSidebar" class="hidden" style="width:320px;background:#1a1b26;border-right:1px solid #414868;display:flex;flex-direction:column">
+      <div style="padding:8px 12px;border-bottom:1px solid #414868;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:12px;font-weight:600;color:#a9b1d6">Mermaid</span>
+        <div style="display:flex;gap:4px;align-items:center">
+          <button onclick="exportMermaid()" style="padding:4px 8px;background:#24283b;border:1px solid #414868;border-radius:4px;font-size:10px;font-weight:600;color:#a9b1d6;cursor:pointer" title="Export diagram to code">Export</button>
+          <button onclick="importMermaid()" style="padding:4px 8px;background:#7aa2f7;border:none;border-radius:4px;font-size:10px;font-weight:600;color:#1a1b26;cursor:pointer" title="Import code to diagram (Ctrl+Enter)">Import</button>
+          <button onclick="toggleMermaidSidebar()" title="Close (M)" style="width:24px;height:24px;background:transparent;border:1px solid #414868;border-radius:4px;font-size:12px;color:#a9b1d6;cursor:pointer">✕</button>
+        </div>
+      </div>
+      <textarea id="mermaidEditor" spellcheck="false" placeholder="flowchart TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Action]
+    B -->|No| D[End]" style="flex:1;background:#24283b;color:#a9b1d6;border:none;padding:12px;font-family:monospace;font-size:12px;line-height:1.5;resize:none;outline:none"></textarea>
+      <div id="mermaidError" style="display:none;padding:8px 12px;background:rgba(247,118,142,0.1);border-top:1px solid #f7768e;font-size:11px;color:#f7768e"></div>
+      <div style="padding:8px 12px;border-top:1px solid #414868;font-size:10px;color:#565f89">
+        <strong>Shapes:</strong> [rect] (pill) {diamond} ((circle))<br>
+        <strong>Connect:</strong> A --> B or A -->|label| B
+      </div>
+    </div>
+    
+    <!-- Canvas area -->
+    <div id="canvasContainer" class="flex-1 relative overflow-hidden">
     <svg id="canvas" class="w-full h-full" style="background: #1a1b26;">
       <defs>
         <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
@@ -247,6 +285,9 @@
             <button onclick="changeShape('text');closeShapeDropdown()" class="flex items-center gap-2 w-full text-left text-xs text-storm-fg hover:bg-storm-accent/20 rounded" style="padding:6px 8px">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg> Text
             </button>
+            <button onclick="changeShape('line');closeShapeDropdown()" class="flex items-center gap-2 w-full text-left text-xs text-storm-fg hover:bg-storm-accent/20 rounded" style="padding:6px 8px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><line x1="5" y1="19" x2="19" y2="5"/><polyline points="12 5 19 5 19 12"/></svg> Arrow
+            </button>
           </div>
         </div>
         
@@ -295,16 +336,54 @@
           </div>
         </div>
         
-        <button onclick="deleteSelected()" title="Delete" style="width:28px;height:28px;background:rgba(247,118,142,0.2);border:none;border-radius:4px;font-size:12px;color:#f7768e">🗑</button>
+        <button onclick="deleteSelected()" title="Delete" style="width:28px;height:28px;background:rgba(247,118,142,0.2);border:none;border-radius:4px;color:#f7768e;display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
         <button onclick="deselectAll()" title="Close" style="width:28px;height:28px;background:#1a1b26;border:1px solid #414868;border-radius:4px;font-size:14px;color:#a9b1d6;cursor:pointer">✕</button>
       </div>
     </div>
+    
+    <!-- Floating toolbar for selected connection -->
+    <div id="connToolbar" class="absolute hidden bg-storm-bg2 border border-storm-fg/20 rounded-lg shadow-xl px-3 py-2 z-30" style="white-space:nowrap">
+      <div class="flex items-center gap-3">
+        <input type="text" id="connLabel" placeholder="Label" 
+          class="bg-storm-bg border border-storm-fg/20 rounded px-2 py-1 text-xs text-storm-fg" style="width:80px">
+        
+        <!-- Line color -->
+        <div class="relative" style="display:inline-block">
+          <button id="connColorBtn" onclick="toggleConnColorPalette()" title="Line Color" style="width:24px;height:24px;border-radius:50%;background:transparent;border:3px solid #a9b1d6"></button>
+          <div id="connColorPalette" class="hidden absolute bg-storm-bg2 border border-storm-fg/20 rounded shadow-lg z-50" style="top:32px;left:50%;transform:translateX(-50%);padding:8px">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+              <button onclick="setConnColor('');closeConnColorPalette()" style="width:22px;height:22px;border-radius:50%;background:transparent;border:3px solid #a9b1d6"></button>
+              <button onclick="setConnColor('#7aa2f7');closeConnColorPalette()" style="width:22px;height:22px;border-radius:50%;background:transparent;border:3px solid #7aa2f7"></button>
+              <button onclick="setConnColor('#9ece6a');closeConnColorPalette()" style="width:22px;height:22px;border-radius:50%;background:transparent;border:3px solid #9ece6a"></button>
+              <button onclick="setConnColor('#f7768e');closeConnColorPalette()" style="width:22px;height:22px;border-radius:50%;background:transparent;border:3px solid #f7768e"></button>
+              <button onclick="setConnColor('#e0af68');closeConnColorPalette()" style="width:22px;height:22px;border-radius:50%;background:transparent;border:3px solid #e0af68"></button>
+              <button onclick="setConnColor('#bb9af7');closeConnColorPalette()" style="width:22px;height:22px;border-radius:50%;background:transparent;border:3px solid #bb9af7"></button>
+              <button onclick="setConnColor('#7dcfff');closeConnColorPalette()" style="width:22px;height:22px;border-radius:50%;background:transparent;border:3px solid #7dcfff"></button>
+              <button onclick="setConnColor('#ff9e64');closeConnColorPalette()" style="width:22px;height:22px;border-radius:50%;background:transparent;border:3px solid #ff9e64"></button>
+            </div>
+          </div>
+        </div>
+        
+        <button onclick="deleteSelectedConn()" title="Delete" style="width:28px;height:28px;background:rgba(247,118,142,0.2);border:none;border-radius:4px;color:#f7768e;display:flex;align-items:center;justify-content:center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
+        <button onclick="deselectConn()" title="Close" style="width:28px;height:28px;background:#1a1b26;border:1px solid #414868;border-radius:4px;font-size:14px;color:#a9b1d6;cursor:pointer">✕</button>
+      </div>
+    </div>
+    </div><!-- end canvasContainer -->
   </main>
 
   <script>
     // State
     let nodes = [];
     let connections = [];
+    let sequenceFrames = []; // For sequence diagram loop/alt frames
     let selectedId = null;
     let selectedIds = [];
     let selectedConnId = null;
@@ -338,7 +417,7 @@
     
     const COLORS = { bg: '#1a1b26', bg2: '#24283b', fg: '#a9b1d6', accent: '#7aa2f7', border: '#414868' };
     const GRID_SIZE = 20;
-    const SHAPE_TOOLS = ['rect', 'pill', 'diamond', 'circle', 'container', 'text'];
+    const SHAPE_TOOLS = ['rect', 'pill', 'diamond', 'circle', 'container', 'text', 'line'];
     
     // Tool management
     function setTool(tool) {
@@ -348,7 +427,7 @@
       document.getElementById('tool-' + tool)?.classList.add('active');
       // Update cursor
       const container = document.getElementById('canvasContainer');
-      if (SHAPE_TOOLS.includes(tool) || tool === 'arrow') {
+      if (SHAPE_TOOLS.includes(tool)) {
         container.classList.add('canvas-draw');
       } else {
         container.classList.remove('canvas-draw');
@@ -476,7 +555,8 @@
         diamond: { w: 80, h: 60 },
         circle: { w: 80, h: 80 },
         container: { w: 280, h: 180 },
-        text: { w: 100, h: 24 }
+        text: { w: 100, h: 24 },
+        line: { w: 100, h: 0 }  // width = dx, height = dy from start
       };
       const def = defaults[type] || { w: 120, h: 44 };
       
@@ -487,7 +567,7 @@
         y: snap(y),
         width: Math.max(40, snap(width || def.w)),
         height: Math.max(20, snap(height || def.h)),
-        label: type === 'container' ? 'Group' : type === 'text' ? 'Text' : 'Node',
+        label: type === 'container' ? 'Group' : type === 'text' ? 'Text' : type === 'line' ? '' : 'Node',
       };
       
       // For circle, ensure square
@@ -501,6 +581,14 @@
       if (type === 'text') {
         node.width = Math.max(60, width || def.w);
         node.height = Math.max(20, height || def.h);
+      }
+      
+      // Line/arrow - width and height represent the delta from x,y to end point
+      // Can be negative to allow any direction
+      if (type === 'line') {
+        node.width = width || def.w;
+        node.height = height || def.h;
+        // No minimum size constraint for lines
       }
       
       nodes.push(node);
@@ -607,11 +695,116 @@
     }
     
     function render() {
+      // First, render lifelines for sequence participants
+      const sequenceParticipants = nodes.filter(n => n.isParticipant);
+      const lifelineHeight = connections.some(c => c.isSequenceMessage) ? 
+        Math.max(...connections.filter(c => c.isSequenceMessage).map(c => c.messageY || 0)) + 80 : 300;
+      
+      // Render sequence diagram frames (loop, alt, etc.)
+      const messageSpacing = 50;
+      const startY = 120;
+      const framesSvg = sequenceFrames.map(frame => {
+        if (frame.startIndex === undefined || frame.endIndex === undefined) return '';
+        if (frame.endIndex < frame.startIndex) return '';
+        
+        // Find the leftmost and rightmost participants in this frame's messages
+        const frameMessages = connections.filter(c => 
+          c.isSequenceMessage && c.index >= frame.startIndex && c.index <= frame.endIndex
+        );
+        if (frameMessages.length === 0) return '';
+        
+        let minX = Infinity, maxX = -Infinity;
+        frameMessages.forEach(msg => {
+          const from = nodes.find(n => n.id === msg.from);
+          const to = nodes.find(n => n.id === msg.to);
+          if (from) { minX = Math.min(minX, from.x); maxX = Math.max(maxX, from.x + from.width); }
+          if (to) { minX = Math.min(minX, to.x); maxX = Math.max(maxX, to.x + to.width); }
+        });
+        
+        const frameY = startY + frame.startIndex * messageSpacing - 25;
+        const frameH = (frame.endIndex - frame.startIndex + 1) * messageSpacing + 30;
+        const frameX = minX - 20;
+        const frameW = maxX - minX + 40;
+        
+        // Frame type colors
+        const typeColors = { loop: '#9ece6a', alt: '#7aa2f7', opt: '#bb9af7', par: '#e0af68' };
+        const frameColor = typeColors[frame.type] || COLORS.fg;
+        
+        // Draw frame box with label
+        let frameSvg = `
+          <rect x="${frameX}" y="${frameY}" width="${frameW}" height="${frameH}" 
+            fill="none" stroke="${frameColor}" stroke-width="1.5" rx="4"/>
+          <rect x="${frameX}" y="${frameY}" width="${frame.type.length * 8 + 16}" height="20" 
+            fill="${frameColor}" rx="4"/>
+          <text x="${frameX + 8}" y="${frameY + 14}" fill="#1a1b26" font-size="11" font-weight="600" font-family="system-ui, sans-serif">${frame.type}</text>
+          <text x="${frameX + frame.type.length * 8 + 24}" y="${frameY + 14}" fill="${COLORS.fg}" font-size="10" font-family="system-ui, sans-serif">[${esc(frame.label || '')}]</text>
+        `;
+        
+        // Draw section dividers for alt/else
+        if (frame.sections && frame.sections.length > 1) {
+          frame.sections.slice(1).forEach(section => {
+            const sectionY = startY + section.startIndex * messageSpacing - 25;
+            frameSvg += `
+              <line x1="${frameX}" y1="${sectionY}" x2="${frameX + frameW}" y2="${sectionY}" 
+                stroke="${frameColor}" stroke-width="1" stroke-dasharray="5,3"/>
+              <text x="${frameX + 8}" y="${sectionY + 14}" fill="${COLORS.fg}" font-size="10" font-family="system-ui, sans-serif">[${esc(section.label || 'else')}]</text>
+            `;
+          });
+        }
+        
+        return frameSvg;
+      }).join('');
+      
       // Connections
-      connectionsGroup.innerHTML = connections.map(conn => {
+      connectionsGroup.innerHTML = framesSvg + connections.map(conn => {
         const from = nodes.find(n => n.id === conn.from);
         const to = nodes.find(n => n.id === conn.to);
         if (!from || !to) return '';
+        
+        // Sequence diagram message
+        if (conn.isSequenceMessage) {
+          const fromX = from.x + from.width / 2;
+          const toX = to.x + to.width / 2;
+          const y = conn.messageY || 150;
+          const isConnSelected = selectedConnId === conn.id;
+          const strokeColor = conn.color || (isConnSelected ? COLORS.accent : COLORS.fg);
+          const strokeWidth = isConnSelected ? 2.5 : 1.5;
+          
+          // Arrow type
+          const isDashed = conn.arrow?.includes('--');
+          const isAsync = conn.arrow?.includes(')');
+          const dashArray = isDashed ? '5,3' : 'none';
+          
+          // Arrow direction
+          const dir = toX > fromX ? 1 : -1;
+          const arrowX = toX - dir * 3;
+          const aLen = 8, aWidth = 4;
+          
+          // Arrow head
+          let arrowPath;
+          if (isAsync) {
+            // Open arrow for async
+            arrowPath = `M${arrowX - dir * aLen},${y - aWidth} L${arrowX},${y} L${arrowX - dir * aLen},${y + aWidth}`;
+          } else {
+            // Filled arrow
+            arrowPath = `M${arrowX},${y} L${arrowX - dir * aLen},${y - aWidth} L${arrowX - dir * aLen},${y + aWidth} Z`;
+          }
+          
+          // Label
+          const label = conn.label || '';
+          const midX = (fromX + toX) / 2;
+          const labelEl = label ? `
+            <rect x="${midX - label.length * 3.5 - 4}" y="${y - 18}" width="${label.length * 7 + 8}" height="14" fill="${COLORS.bg}" rx="2"/>
+            <text x="${midX}" y="${y - 8}" fill="${COLORS.fg}" font-size="11" font-family="system-ui, sans-serif" text-anchor="middle">${esc(label)}</text>
+          ` : '';
+          
+          return `<g class="connection-group ${isConnSelected ? 'selected' : ''}" data-id="${conn.id}" data-conn="${conn.id}" style="cursor:pointer">
+            <line x1="${fromX}" y1="${y}" x2="${toX}" y2="${y}" stroke="transparent" stroke-width="12"/>
+            <line x1="${fromX}" y1="${y}" x2="${arrowX}" y2="${y}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-dasharray="${dashArray}"/>
+            <path d="${arrowPath}" fill="${isAsync ? 'none' : strokeColor}" stroke="${strokeColor}" stroke-width="1.5"/>
+            ${labelEl}
+          </g>`;
+        }
         
         // Smart routing - ignores stored sides, calculates optimal path
         const lineStyle = conn.lineStyle || 'rounded';
@@ -665,9 +858,10 @@
         angle = Math.atan2(endY - prevPt.y, endX - prevPt.x);
         
         const aLen = 8, aWidth = 4;
-        // Arrow tip at the end of the (shortened) path
-        const tipX = lastPt.x;
-        const tipY = lastPt.y;
+        const tipGap = 3; // Small gap between arrow tip and node for premium look
+        // Arrow tip near the endpoint with a small gap
+        const tipX = endX - Math.cos(angle) * tipGap;
+        const tipY = endY - Math.sin(angle) * tipGap;
         const baseX = tipX - Math.cos(angle) * aLen;
         const baseY = tipY - Math.sin(angle) * aLen;
         const px = Math.cos(angle + Math.PI/2) * aWidth;
@@ -711,7 +905,7 @@
           
           labelEl = `
             <rect x="${midX - boxWidth/2}" y="${boxY}" width="${boxWidth}" height="${boxHeight}" rx="4" fill="${COLORS.bg}" stroke="none" style="pointer-events:none"/>
-            <text x="${midX}" y="${boxY + padding + 10}" fill="${COLORS.fg}" font-size="12" text-anchor="middle" style="pointer-events:none">${tspans}</text>
+            <text x="${midX}" y="${boxY + padding + 10}" fill="${COLORS.fg}" font-size="12" font-family="system-ui, sans-serif" text-anchor="middle" style="pointer-events:none">${tspans}</text>
           `;
         }
         
@@ -779,7 +973,7 @@
             fill="${fill}" stroke="none" class="container-fill"/>
             <rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="8" 
             fill="none" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
-            <text x="${node.x + 12}" y="${node.y + 22}" fill="${node.color || COLORS.fg}" font-size="13" font-weight="600" style="pointer-events:none">${esc(node.label)}</text>`;
+            <text x="${node.x + 12}" y="${node.y + 22}" fill="${node.color || COLORS.fg}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" style="pointer-events:none">${esc(node.label)}</text>`;
         } else if (node.type === 'diamond') {
           const { fill, style } = getFill(node, 'infill');
           const customPattern = getCustomPattern(node);
@@ -788,7 +982,7 @@
           const txtColor = (style === 'outline' || style === 'stripe' || style === 'grid') ? (node.outlineColor || COLORS.fg) : textColor;
           shape = `${customPattern}<polygon points="${cx},${node.y} ${node.x + node.width},${cy} ${cx},${node.y + node.height} ${node.x},${cy}" 
             fill="${fill}" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
-            <text x="${cx}" y="${cy + 4}" fill="${txtColor}" font-size="12" text-anchor="middle">${esc(node.label)}</text>`;
+            <text x="${cx}" y="${cy + 4}" fill="${txtColor}" font-size="12" font-family="system-ui, sans-serif" text-anchor="middle">${esc(node.label)}</text>`;
         } else if (node.type === 'circle') {
           const { fill, style } = getFill(node, 'infill');
           const customPattern = getCustomPattern(node);
@@ -796,13 +990,93 @@
           const txtColor = (style === 'outline' || style === 'stripe' || style === 'grid') ? (node.outlineColor || COLORS.fg) : textColor;
           shape = `${customPattern}<circle cx="${cx}" cy="${cy}" r="${node.width / 2}" 
             fill="${fill}" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
-            <text x="${cx}" y="${cy + 4}" fill="${txtColor}" font-size="12" text-anchor="middle">${esc(node.label)}</text>`;
+            <text x="${cx}" y="${cy + 4}" fill="${txtColor}" font-size="12" font-family="system-ui, sans-serif" text-anchor="middle">${esc(node.label)}</text>`;
         } else if (node.type === 'text') {
           // Text node - just text, no shape border (unless selected)
           const txtColor = node.color || COLORS.fg;
           shape = `<rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" 
             fill="transparent" stroke="${isSelected ? COLORS.accent : 'transparent'}" stroke-width="1" stroke-dasharray="${isSelected ? '4' : '0'}" class="node-border"/>
-            <text x="${node.x + node.width/2}" y="${node.y + node.height/2 + 5}" fill="${txtColor}" font-size="14" text-anchor="middle" style="pointer-events:none">${esc(node.label)}</text>`;
+            <text x="${node.x + node.width/2}" y="${node.y + node.height/2 + 5}" fill="${txtColor}" font-size="14" font-family="system-ui, sans-serif" text-anchor="middle" style="pointer-events:none">${esc(node.label)}</text>`;
+        } else if (node.type === 'line') {
+          // Standalone arrow/line shape
+          const x1 = node.x;
+          const y1 = node.y;
+          const x2 = node.x + node.width;
+          const y2 = node.y + node.height;
+          const lineColor = node.color || COLORS.fg;
+          const lineWidth = isSelected ? 2.5 : 1.5;
+          
+          // Calculate arrow head
+          const angle = Math.atan2(y2 - y1, x2 - x1);
+          const aLen = 10, aWidth = 5;
+          const tipX = x2;
+          const tipY = y2;
+          const baseX = tipX - Math.cos(angle) * aLen;
+          const baseY = tipY - Math.sin(angle) * aLen;
+          const px = Math.cos(angle + Math.PI/2) * aWidth;
+          const py = Math.sin(angle + Math.PI/2) * aWidth;
+          const arrow = `M${tipX},${tipY} L${baseX + px},${baseY + py} L${baseX - px},${baseY - py} Z`;
+          
+          // Hit area for easier selection
+          const hitArea = `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="transparent" stroke-width="15" stroke-linecap="round"/>`;
+          
+          // Selection handles at endpoints
+          const handles = isSelected ? `
+            <circle cx="${x1}" cy="${y1}" r="5" fill="${COLORS.accent}" class="line-handle start-handle" style="cursor:move"/>
+            <circle cx="${x2}" cy="${y2}" r="5" fill="${COLORS.accent}" class="line-handle end-handle" style="cursor:move"/>
+          ` : '';
+          
+          // Optional label in middle
+          const midX = (x1 + x2) / 2;
+          const midY = (y1 + y2) / 2;
+          const labelEl = node.label && node.label !== 'Arrow' ? `
+            <rect x="${midX - node.label.length * 3.5 - 4}" y="${midY - 10}" width="${node.label.length * 7 + 8}" height="16" fill="${COLORS.bg}" rx="2"/>
+            <text x="${midX}" y="${midY + 3}" fill="${COLORS.fg}" font-size="11" font-family="system-ui, sans-serif" text-anchor="middle">${esc(node.label)}</text>
+          ` : '';
+          
+          shape = `${hitArea}
+            <line x1="${x1}" y1="${y1}" x2="${x2 - Math.cos(angle) * 3}" y2="${y2 - Math.sin(angle) * 3}" 
+              stroke="${isSelected ? COLORS.accent : lineColor}" stroke-width="${lineWidth}" stroke-linecap="round" class="node-border"/>
+            <path d="${arrow}" fill="${isSelected ? COLORS.accent : lineColor}"/>
+            ${labelEl}
+            ${handles}`;
+        } else if (node.isClass) {
+          // UML Class box with header, properties, methods
+          const headerH = 28;
+          const props = node.properties || [];
+          const methods = node.methods || [];
+          const lineH = 16;
+          const propsH = Math.max(20, props.length * lineH + 8);
+          const methodsH = Math.max(20, methods.length * lineH + 8);
+          const totalH = headerH + propsH + methodsH;
+          
+          // Update node height if needed
+          if (node.height < totalH) node.height = totalH;
+          
+          const propsY = node.y + headerH;
+          const methodsY = propsY + propsH;
+          
+          let propsText = props.map((p, i) => 
+            `<text x="${node.x + 8}" y="${propsY + 14 + i * lineH}" fill="${COLORS.fg}" font-size="11" font-family="monospace">${esc(p)}</text>`
+          ).join('');
+          
+          let methodsText = methods.map((m, i) => 
+            `<text x="${node.x + 8}" y="${methodsY + 14 + i * lineH}" fill="${COLORS.fg}" font-size="11" font-family="monospace">${esc(m)}</text>`
+          ).join('');
+          
+          shape = `
+            <rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="4" 
+              fill="${COLORS.bg2}" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
+            <rect x="${node.x}" y="${node.y}" width="${node.width}" height="${headerH}" rx="4" 
+              fill="${node.color || COLORS.accent}" stroke="none"/>
+            <rect x="${node.x}" y="${node.y + headerH - 4}" width="${node.width}" height="4" 
+              fill="${node.color || COLORS.accent}" stroke="none"/>
+            <text x="${node.x + node.width/2}" y="${node.y + 18}" fill="#1a1b26" font-size="12" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle">${esc(node.label)}</text>
+            <line x1="${node.x}" y1="${propsY}" x2="${node.x + node.width}" y2="${propsY}" stroke="${COLORS.border}" stroke-width="1"/>
+            ${propsText}
+            <line x1="${node.x}" y1="${methodsY}" x2="${node.x + node.width}" y2="${methodsY}" stroke="${COLORS.border}" stroke-width="1"/>
+            ${methodsText}
+          `;
         } else {
           const { fill, style } = getFill(node, 'infill');
           const customPattern = getCustomPattern(node);
@@ -811,13 +1085,44 @@
           const txtColor = (style === 'outline' || style === 'stripe' || style === 'grid') ? (node.outlineColor || COLORS.fg) : textColor;
           shape = `${customPattern}<rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="${rx}" 
             fill="${fill}" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
-            <text x="${node.x + node.width/2}" y="${node.y + node.height/2 + 4}" fill="${txtColor}" font-size="12" text-anchor="middle">${esc(node.label)}</text>`;
+            <text x="${node.x + node.width/2}" y="${node.y + node.height/2 + 4}" fill="${txtColor}" font-size="12" font-family="system-ui, sans-serif" text-anchor="middle">${esc(node.label)}</text>`;
         }
         
+        // Add lifeline for sequence participants with clickable connection zones
+        let lifeline = '';
+        if (node.isParticipant) {
+          const lifeX = node.x + node.width/2;
+          const lifeY1 = node.y + node.height;
+          const lifeY2 = node.y + node.height + lifelineHeight;
+          
+          // The dashed lifeline
+          lifeline = `
+            <line x1="${lifeX}" y1="${lifeY1}" x2="${lifeX}" y2="${lifeY2}" 
+                  stroke="${COLORS.border}" stroke-width="1.5" stroke-dasharray="6,4"/>
+          `;
+          
+          // Add invisible connection zones along the lifeline (every 40px)
+          const zoneSpacing = 40;
+          for (let y = lifeY1 + 20; y < lifeY2 - 20; y += zoneSpacing) {
+            lifeline += `
+              <rect class="lifeline-connector" x="${lifeX - 8}" y="${y - 8}" width="16" height="16" 
+                    fill="transparent" style="cursor:crosshair" 
+                    data-node="${node.id}" data-lifeline-y="${y}" data-side="bottom"/>
+            `;
+          }
+        }
+        
+        // Don't render connectors for line/arrow shapes - they have their own handles
+        const connectors = node.type === 'line' ? '' : renderConnectors(node);
+        // Don't render resize handle for line shapes - they have endpoint handles
+        const resizeHandle = (isSelected && node.type !== 'line') ? 
+          `<rect class="resize-handle" x="${node.x + node.width - 8}" y="${node.y + node.height - 8}" width="8" height="8" fill="${COLORS.accent}" rx="2"/>` : '';
+        
         return `<g class="node ${isSelected ? 'selected' : ''}" data-id="${node.id}">
+          ${lifeline}
           ${shape}
-          ${renderConnectors(node)}
-          ${isSelected ? `<rect class="resize-handle" x="${node.x + node.width - 8}" y="${node.y + node.height - 8}" width="8" height="8" fill="${COLORS.accent}" rx="2"/>` : ''}
+          ${connectors}
+          ${resizeHandle}
         </g>`;
       }).join('');
       
@@ -827,7 +1132,9 @@
         el.addEventListener('dblclick', onNodeDblClick);
       });
       document.querySelectorAll('.connector').forEach(el => el.addEventListener('mousedown', onConnectorMouseDown));
+      document.querySelectorAll('.lifeline-connector').forEach(el => el.addEventListener('mousedown', onLifelineConnectorMouseDown));
       document.querySelectorAll('.resize-handle').forEach(el => el.addEventListener('mousedown', onResizeMouseDown));
+      document.querySelectorAll('.line-handle').forEach(el => el.addEventListener('mousedown', onLineHandleMouseDown));
       document.querySelectorAll('.conn-hit').forEach(el => {
         el.addEventListener('mousedown', onConnectionMouseDown);
       });
@@ -870,6 +1177,8 @@
     // Selection
     function selectNode(id) {
       selectedId = id;
+      selectedConnId = null;
+      hideConnToolbar();
       const node = nodes.find(n => n.id === id);
       if (node) {
         toolbarLabel.value = node.label;
@@ -892,6 +1201,7 @@
       selectedIds = [];
       selectedConnId = null;
       floatingToolbar.classList.add('hidden');
+      hideConnToolbar();
       render();
     }
     
@@ -915,10 +1225,7 @@
     function deleteSelected() {
       // Delete selected connection
       if (selectedConnId) {
-        connections = connections.filter(c => c.id !== selectedConnId);
-        selectedConnId = null;
-        saveState();
-        render();
+        deleteSelectedConn();
         return;
       }
       
@@ -932,6 +1239,85 @@
         render();
       }
     }
+    
+    // Connection toolbar functions
+    const connToolbar = document.getElementById('connToolbar');
+    const connLabelInput = document.getElementById('connLabel');
+    
+    function showConnToolbar(conn) {
+      const fromNode = nodes.find(n => n.id === conn.from);
+      const toNode = nodes.find(n => n.id === conn.to);
+      if (!fromNode || !toNode) return;
+      
+      // Calculate midpoint of connection
+      const midX = (fromNode.x + fromNode.width/2 + toNode.x + toNode.width/2) / 2;
+      const midY = (fromNode.y + fromNode.height/2 + toNode.y + toNode.height/2) / 2;
+      
+      // Convert to screen coordinates
+      const rect = canvas.getBoundingClientRect();
+      const screenX = (midX - viewBox.x) / zoom + rect.left;
+      const screenY = (midY - viewBox.y) / zoom + rect.top - 50;
+      
+      connLabelInput.value = conn.label || '';
+      document.getElementById('connColorBtn').style.borderColor = conn.color || '#a9b1d6';
+      
+      connToolbar.style.left = `${screenX}px`;
+      connToolbar.style.top = `${screenY}px`;
+      connToolbar.style.transform = 'translateX(-50%)';
+      connToolbar.classList.remove('hidden');
+    }
+    
+    function hideConnToolbar() {
+      connToolbar.classList.add('hidden');
+      document.getElementById('connColorPalette').classList.add('hidden');
+    }
+    
+    function deselectConn() {
+      selectedConnId = null;
+      hideConnToolbar();
+      render();
+    }
+    
+    function deleteSelectedConn() {
+      if (selectedConnId) {
+        connections = connections.filter(c => c.id !== selectedConnId);
+        selectedConnId = null;
+        hideConnToolbar();
+        saveState();
+        render();
+      }
+    }
+    
+    function toggleConnColorPalette() {
+      document.getElementById('connColorPalette').classList.toggle('hidden');
+    }
+    
+    function closeConnColorPalette() {
+      document.getElementById('connColorPalette').classList.add('hidden');
+    }
+    
+    function setConnColor(color) {
+      const conn = connections.find(c => c.id === selectedConnId);
+      if (conn) {
+        conn.color = color;
+        document.getElementById('connColorBtn').style.borderColor = color || '#a9b1d6';
+        saveState();
+        render();
+      }
+    }
+    
+    // Update connection label on input
+    connLabelInput.addEventListener('input', () => {
+      const conn = connections.find(c => c.id === selectedConnId);
+      if (conn) {
+        conn.label = connLabelInput.value;
+        render();
+      }
+    });
+    
+    connLabelInput.addEventListener('change', () => {
+      saveState();
+    });
     
     // Node properties
     function setOutlineColor(color) {
@@ -994,7 +1380,8 @@
         diamond: '<polygon points="12,2 22,12 12,22 2,12"/>',
         circle: '<circle cx="12" cy="12" r="10"/>',
         container: '<rect x="2" y="2" width="20" height="20" rx="2" stroke-dasharray="4"/>',
-        text: '<path d="M4 7V4h16v3M9 20h6M12 4v16"/>'
+        text: '<path d="M4 7V4h16v3M9 20h6M12 4v16"/>',
+        line: '<line x1="5" y1="19" x2="19" y2="5"/><polyline points="12 5 19 5 19 12"/>'
       };
       const btn = document.getElementById('shapeBtn');
       if (btn) {
@@ -1113,6 +1500,9 @@
         selectedIds = [];
         floatingToolbar.classList.add('hidden');
         render();
+        // Show connection toolbar
+        const conn = connections.find(c => c.id === connId);
+        if (conn) showConnToolbar(conn);
       }
       
       e.stopPropagation();
@@ -1178,6 +1568,43 @@
       e.stopPropagation();
     }
     
+    function onLifelineConnectorMouseDown(e) {
+      const nodeId = e.target.dataset.node;
+      const lifelineY = parseFloat(e.target.dataset.lifelineY);
+      connecting = { 
+        from: nodeId, 
+        fromSide: 'bottom',
+        fromIdx: 1,
+        isLifeline: true,
+        lifelineY: lifelineY
+      };
+      tempLine.style.display = 'block';
+      canvas.classList.add('show-connectors');
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    let lineResizing = null;
+    function onLineHandleMouseDown(e) {
+      const nodeEl = e.target.closest('.node');
+      if (!nodeEl) return;
+      const nodeId = nodeEl.dataset.id;
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node || node.type !== 'line') return;
+      
+      const isStart = e.target.classList.contains('start-handle');
+      lineResizing = { 
+        node, 
+        isStart,
+        origX: node.x,
+        origY: node.y,
+        origW: node.width,
+        origH: node.height
+      };
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     let resizing = null;
     function onResizeMouseDown(e) {
       const node = nodes.find(n => n.id === selectedId);
@@ -1213,17 +1640,6 @@
         return;
       }
       
-      // Arrow mode - start from empty space creates a node first
-      if (currentTool === 'arrow') {
-        // Create a new node at click position and start connecting from it
-        const node = createNode('rect', pos.x - 60, pos.y - 22, 120, 44);
-        saveState();
-        render();
-        connecting = { from: node.id, fromSide: 'right', fromIdx: 1 };
-        tempLine.style.display = 'block';
-        return;
-      }
-      
       // Select mode - marquee selection
       if (currentTool === 'select') {
         deselectAll();
@@ -1241,19 +1657,39 @@
       
       // Drawing shape preview
       if (drawing) {
-        const x = Math.min(drawing.startX, pos.x);
-        const y = Math.min(drawing.startY, pos.y);
-        const w = Math.abs(pos.x - drawing.startX);
-        const h = Math.abs(pos.y - drawing.startY);
-        drawPreview.setAttribute('x', x);
-        drawPreview.setAttribute('y', y);
-        drawPreview.setAttribute('width', w);
-        drawPreview.setAttribute('height', h);
-        // For circle, show square preview
-        if (drawing.type === 'circle') {
-          const size = Math.max(w, h);
-          drawPreview.setAttribute('width', size);
-          drawPreview.setAttribute('height', size);
+        if (drawing.type === 'line') {
+          // Line preview - show actual line with arrow
+          const x1 = drawing.startX;
+          const y1 = drawing.startY;
+          const x2 = pos.x;
+          const y2 = pos.y;
+          drawPreview.style.display = 'none';
+          // Use tempLine for line preview
+          const angle = Math.atan2(y2 - y1, x2 - x1);
+          const aLen = 10, aWidth = 5;
+          const baseX = x2 - Math.cos(angle) * aLen;
+          const baseY = y2 - Math.sin(angle) * aLen;
+          const px = Math.cos(angle + Math.PI/2) * aWidth;
+          const py = Math.sin(angle + Math.PI/2) * aWidth;
+          tempPath.setAttribute('d', `M${x1},${y1} L${x2},${y2} M${x2},${y2} L${baseX + px},${baseY + py} M${x2},${y2} L${baseX - px},${baseY - py}`);
+          tempLine.style.display = 'block';
+        } else {
+          tempLine.style.display = 'none';
+          const x = Math.min(drawing.startX, pos.x);
+          const y = Math.min(drawing.startY, pos.y);
+          const w = Math.abs(pos.x - drawing.startX);
+          const h = Math.abs(pos.y - drawing.startY);
+          drawPreview.setAttribute('x', x);
+          drawPreview.setAttribute('y', y);
+          drawPreview.setAttribute('width', w);
+          drawPreview.setAttribute('height', h);
+          drawPreview.style.display = 'block';
+          // For circle, show square preview
+          if (drawing.type === 'circle') {
+            const size = Math.max(w, h);
+            drawPreview.setAttribute('width', size);
+            drawPreview.setAttribute('height', size);
+          }
         }
       }
       
@@ -1271,6 +1707,27 @@
         const dy = e.clientY - resizing.startY;
         resizing.node.width = Math.max(60, snap(resizing.startW + dx / zoom));
         resizing.node.height = Math.max(40, snap(resizing.startH + dy / zoom));
+        render();
+      }
+      
+      // Line handle resizing
+      if (lineResizing) {
+        const node = lineResizing.node;
+        if (lineResizing.isStart) {
+          // Moving start point - adjust x,y and compensate width/height
+          const newX = snap(pos.x);
+          const newY = snap(pos.y);
+          const endX = lineResizing.origX + lineResizing.origW;
+          const endY = lineResizing.origY + lineResizing.origH;
+          node.x = newX;
+          node.y = newY;
+          node.width = endX - newX;
+          node.height = endY - newY;
+        } else {
+          // Moving end point - just adjust width/height
+          node.width = snap(pos.x) - node.x;
+          node.height = snap(pos.y) - node.y;
+        }
         render();
       }
       
@@ -1323,47 +1780,109 @@
       
       // Finish drawing shape
       if (drawing) {
-        const x = Math.min(drawing.startX, pos.x);
-        const y = Math.min(drawing.startY, pos.y);
-        const w = Math.abs(pos.x - drawing.startX);
-        const h = Math.abs(pos.y - drawing.startY);
-        
-        // Only create if dragged at least a little
-        if (w > 10 || h > 10) {
-          const node = createNode(drawing.type, x, y, w, h);
-          saveState();
-          render();
-          selectNode(node.id);
+        if (drawing.type === 'line') {
+          // Line uses start point + delta (width/height can be negative)
+          const dx = pos.x - drawing.startX;
+          const dy = pos.y - drawing.startY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          if (dist > 20) {
+            const node = createNode('line', drawing.startX, drawing.startY, dx, dy);
+            saveState();
+            render();
+            selectNode(node.id);
+          }
+          
+          drawing = null;
+          tempLine.style.display = 'none';
+          setTool('select');
+        } else {
+          const x = Math.min(drawing.startX, pos.x);
+          const y = Math.min(drawing.startY, pos.y);
+          const w = Math.abs(pos.x - drawing.startX);
+          const h = Math.abs(pos.y - drawing.startY);
+          
+          // Only create if dragged at least a little
+          if (w > 10 || h > 10) {
+            const node = createNode(drawing.type, x, y, w, h);
+            saveState();
+            render();
+            selectNode(node.id);
+          }
+          
+          drawing = null;
+          drawPreview.style.display = 'none';
+          
+          // Switch to select mode after drawing
+          setTool('select');
         }
-        
-        drawing = null;
-        drawPreview.style.display = 'none';
-        
-        // Switch to select mode after drawing
-        setTool('select');
       }
       
       if (dragging) { saveState(); dragging = null; }
       if (resizing) { saveState(); resizing = null; }
+      if (lineResizing) { saveState(); lineResizing = null; }
       
       // Finish connection
       if (connecting) {
         const target = document.elementFromPoint(e.clientX, e.clientY);
         
-        if (target?.classList.contains('connector')) {
-          // Connected to existing node
+        // Check if we're connecting lifelines (sequence diagram)
+        const isLifelineConnection = connecting.isLifeline || target?.classList.contains('lifeline-connector');
+        
+        if (target?.classList.contains('lifeline-connector')) {
+          // Lifeline to lifeline connection - create sequence message
           const toId = target.dataset.node;
+          const toLifelineY = parseFloat(target.dataset.lifelineY);
           if (toId !== connecting.from) {
+            const messageY = connecting.lifelineY || toLifelineY || pos.y;
             connections.push({ 
               id: 'c' + Date.now(), 
               from: connecting.from, 
-              fromSide: connecting.fromSide,
-              fromIdx: connecting.fromIdx,
               to: toId, 
-              toSide: target.dataset.side,
-              toIdx: parseInt(target.dataset.idx) || 1,
-              lineStyle: globalLineStyle
+              fromSide: 'bottom',
+              toSide: 'bottom',
+              fromIdx: 1,
+              toIdx: 1,
+              label: '',
+              isSequenceMessage: true,
+              messageY: messageY,
+              arrow: '->>'
             });
+            saveState();
+            render();
+          }
+        } else if (target?.classList.contains('connector')) {
+          // Connected to existing node connector
+          const toId = target.dataset.node;
+          if (toId !== connecting.from) {
+            if (connecting.isLifeline) {
+              // Lifeline to regular node - create sequence message
+              connections.push({ 
+                id: 'c' + Date.now(), 
+                from: connecting.from, 
+                to: toId, 
+                fromSide: 'bottom',
+                toSide: target.dataset.side,
+                fromIdx: 1,
+                toIdx: parseInt(target.dataset.idx) || 1,
+                label: '',
+                isSequenceMessage: true,
+                messageY: connecting.lifelineY || pos.y,
+                arrow: '->>'
+              });
+            } else {
+              // Regular node to node connection
+              connections.push({ 
+                id: 'c' + Date.now(), 
+                from: connecting.from, 
+                fromSide: connecting.fromSide,
+                fromIdx: connecting.fromIdx,
+                to: toId, 
+                toSide: target.dataset.side,
+                toIdx: parseInt(target.dataset.idx) || 1,
+                lineStyle: globalLineStyle
+              });
+            }
             saveState();
             render();
           }
@@ -1443,7 +1962,7 @@
       if (e.key === '4') { setTool('circle'); return; }
       if (e.key === '5') { setTool('container'); return; }
       if (e.key === 't' || e.key === 'T') { setTool('text'); return; }
-      if (e.key === '6') { setTool('arrow'); return; }
+      if (e.key === '6') { setTool('line'); return; }
       if (e.key === '7') { toggleDropdown('lineDropdown'); return; }
       if (e.key === '8') { toggleGrid(); return; }
       if (e.key === '9') { toggleDropdown('exportDropdown'); return; }
@@ -1551,8 +2070,20 @@
       clone.querySelectorAll('.connector, .resize-handle, #selectBox, #drawPreview').forEach(el => el.remove());
       clone.querySelector('#gridBg').remove();
       
-      // Set viewBox to cropped area
+      // Set viewBox and dimensions to cropped area
       clone.setAttribute('viewBox', `${cropX} ${cropY} ${cropW} ${cropH}`);
+      clone.setAttribute('width', cropW);
+      clone.setAttribute('height', cropH);
+      
+      // Embed font style for consistent rendering
+      const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+      style.textContent = `text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }`;
+      clone.insertBefore(style, clone.firstChild);
+      
+      // Also set font-family on all text elements directly
+      clone.querySelectorAll('text').forEach(t => {
+        t.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif');
+      });
       
       const svgData = new XMLSerializer().serializeToString(clone);
       const img = new Image();
@@ -1578,6 +2109,577 @@
       viewBox.w = rect.width * zoom;
       viewBox.h = rect.height * zoom;
       updateViewBox();
+    });
+    
+    // ===== MERMAID INTEGRATION =====
+    let mermaidSyncPaused = false;
+    
+    function toggleMermaidSidebar() {
+      const sidebar = document.getElementById('mermaidSidebar');
+      const toggle = document.getElementById('mermaidToggle');
+      const isHidden = sidebar.classList.contains('hidden');
+      
+      if (isHidden) {
+        sidebar.classList.remove('hidden');
+        sidebar.style.display = 'flex';
+        toggle.classList.add('active');
+        // Populate with current diagram's Mermaid code
+        const editor = document.getElementById('mermaidEditor');
+        editor.value = generateMermaid();
+        document.getElementById('mermaidError').style.display = 'none';
+      } else {
+        sidebar.classList.add('hidden');
+        sidebar.style.display = 'none';
+        toggle.classList.remove('active');
+      }
+    }
+    
+    function generateMermaid() {
+      if (nodes.length === 0) return 'flowchart TD\n    %% Empty diagram';
+      
+      let code = 'flowchart TD\n';
+      const nodeIds = {};
+      
+      // Generate node IDs (A, B, C, ...)
+      nodes.forEach((n, i) => {
+        nodeIds[n.id] = String.fromCharCode(65 + (i % 26)) + (i >= 26 ? Math.floor(i / 26) : '');
+      });
+      
+      // Generate node definitions
+      nodes.forEach(n => {
+        const id = nodeIds[n.id];
+        const label = (n.label || 'Node').replace(/"/g, "'");
+        let shape;
+        switch (n.type) {
+          case 'pill': shape = `(${label})`; break;
+          case 'diamond': shape = `{${label}}`; break;
+          case 'circle': shape = `((${label}))`; break;
+          case 'container': shape = `[["${label}"]]`; break;
+          default: shape = `[${label}]`;
+        }
+        code += `    ${id}${shape}\n`;
+      });
+      
+      // Generate connections
+      if (connections.length > 0) {
+        code += '\n';
+        connections.forEach(c => {
+          const fromId = nodeIds[c.from];
+          const toId = nodeIds[c.to];
+          if (fromId && toId) {
+            const label = c.label ? `|${c.label}|` : '';
+            code += `    ${fromId} -->${label} ${toId}\n`;
+          }
+        });
+      }
+      
+      return code.trim();
+    }
+    
+    function parseMermaid(code) {
+      const lines = code.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('%%'));
+      
+      // Detect diagram type
+      const firstLine = lines[0] || '';
+      if (firstLine.match(/^classDiagram/i)) {
+        return parseClassDiagram(lines.slice(1));
+      }
+      if (firstLine.match(/^sequenceDiagram/i)) {
+        return parseSequenceDiagram(lines.slice(1));
+      }
+      
+      // Default: flowchart
+      return parseFlowchart(lines);
+    }
+    
+    function parseSequenceDiagram(lines) {
+      const result = { nodes: [], connections: [], errors: [], diagramType: 'sequence', frames: [] };
+      const participantMap = {};
+      const participantOrder = [];
+      let messageIndex = 0;
+      const frameStack = []; // Track nested frames
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line) continue;
+        
+        // Participant definition: participant Alice or participant Alice as A
+        let m = line.match(/^participant\s+(\w+)(?:\s+as\s+(.+))?$/);
+        if (m) {
+          const id = m[1];
+          const label = m[2] || m[1];
+          if (!participantMap[id]) {
+            participantMap[id] = { id, type: 'participant', label };
+            participantOrder.push(id);
+          }
+          continue;
+        }
+        
+        // Actor definition: actor Alice
+        m = line.match(/^actor\s+(\w+)(?:\s+as\s+(.+))?$/);
+        if (m) {
+          const id = m[1];
+          const label = m[2] || m[1];
+          if (!participantMap[id]) {
+            participantMap[id] = { id, type: 'actor', label };
+            participantOrder.push(id);
+          }
+          continue;
+        }
+        
+        // Frame start: loop, alt, opt, par
+        m = line.match(/^(loop|alt|opt|par)\s+(.*)$/);
+        if (m) {
+          frameStack.push({
+            type: m[1],
+            label: m[2],
+            startIndex: messageIndex,
+            sections: [{ label: m[2], startIndex: messageIndex }]
+          });
+          continue;
+        }
+        
+        // Else section in alt
+        m = line.match(/^else\s*(.*)$/);
+        if (m && frameStack.length > 0) {
+          const currentFrame = frameStack[frameStack.length - 1];
+          if (currentFrame.sections) {
+            currentFrame.sections[currentFrame.sections.length - 1].endIndex = messageIndex - 1;
+            currentFrame.sections.push({ label: m[1] || 'else', startIndex: messageIndex });
+          }
+          continue;
+        }
+        
+        // Frame end
+        if (line === 'end' && frameStack.length > 0) {
+          const frame = frameStack.pop();
+          frame.endIndex = messageIndex - 1;
+          if (frame.sections) {
+            frame.sections[frame.sections.length - 1].endIndex = messageIndex - 1;
+          }
+          result.frames.push(frame);
+          continue;
+        }
+        
+        // Message: Alice->>Bob: Hello or Alice-->>Bob: Hi or Alice-)Bob: Async
+        m = line.match(/^(\w+)\s*(->>|-->>|-\)|--\)|->|-->)\s*(\w+)\s*:\s*(.*)$/);
+        if (m) {
+          const [, from, arrow, to, message] = m;
+          
+          // Auto-create participants if not defined
+          if (!participantMap[from]) {
+            participantMap[from] = { id: from, type: 'participant', label: from };
+            participantOrder.push(from);
+          }
+          if (!participantMap[to]) {
+            participantMap[to] = { id: to, type: 'participant', label: to };
+            participantOrder.push(to);
+          }
+          
+          result.connections.push({
+            from,
+            to,
+            label: message,
+            arrow,
+            index: messageIndex++
+          });
+          continue;
+        }
+        
+        // Note: Note over Alice,Bob: text or Note right of Alice: text
+        // Skip for now - could add later
+        if (line.startsWith('Note ')) continue;
+        
+        // Activation: activate/deactivate - skip for now
+        if (line.startsWith('activate ') || line.startsWith('deactivate ')) continue;
+      }
+      
+      // Order nodes by their order of appearance
+      result.nodes = participantOrder.map(id => participantMap[id]);
+      return result;
+    }
+    
+    function parseClassDiagram(lines) {
+      const result = { nodes: [], connections: [], errors: [], diagramType: 'class' };
+      const classMap = {};
+      let currentClass = null;
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line) continue;
+        
+        // Class definition start: class ClassName {
+        let m = line.match(/^class\s+(\w+)\s*\{?$/);
+        if (m) {
+          currentClass = m[1];
+          if (!classMap[currentClass]) {
+            classMap[currentClass] = { id: currentClass, type: 'class', label: currentClass, properties: [], methods: [] };
+          }
+          continue;
+        }
+        
+        // Class definition end
+        if (line === '}') {
+          currentClass = null;
+          continue;
+        }
+        
+        // Inside class definition - property or method
+        if (currentClass && classMap[currentClass]) {
+          const memberMatch = line.match(/^([+\-#~])?(.+)$/);
+          if (memberMatch) {
+            const visibility = memberMatch[1] || '+';
+            const member = memberMatch[2].trim();
+            if (member.includes('(')) {
+              classMap[currentClass].methods.push(visibility + member);
+            } else {
+              classMap[currentClass].properties.push(visibility + member);
+            }
+          }
+          continue;
+        }
+        
+        // Relationship: ClassA <|-- ClassB (inheritance)
+        // ClassA *-- ClassB (composition), ClassA o-- ClassB (aggregation)
+        // ClassA --> ClassB (association), ClassA -- ClassB (link)
+        const relMatch = line.match(/^(\w+)\s*(<\|--|--\*|o--|-->|--)\s*(\w+)(?:\s*:\s*(.+))?$/);
+        if (relMatch) {
+          const [, from, relType, to, label] = relMatch;
+          // Ensure both classes exist
+          if (!classMap[from]) classMap[from] = { id: from, type: 'class', label: from, properties: [], methods: [] };
+          if (!classMap[to]) classMap[to] = { id: to, type: 'class', label: to, properties: [], methods: [] };
+          
+          result.connections.push({
+            from: from,
+            to: to,
+            label: label || '',
+            relType: relType
+          });
+          continue;
+        }
+        
+        // Property/method on class: ClassName : +propertyName or ClassName : +methodName()
+        const propMatch = line.match(/^(\w+)\s*:\s*([+\-#~])?(.+)$/);
+        if (propMatch) {
+          const [, className, visibility, member] = propMatch;
+          if (!classMap[className]) classMap[className] = { id: className, type: 'class', label: className, properties: [], methods: [] };
+          const vis = visibility || '+';
+          if (member.includes('(')) {
+            classMap[className].methods.push(vis + member.trim());
+          } else {
+            classMap[className].properties.push(vis + member.trim());
+          }
+          continue;
+        }
+      }
+      
+      result.nodes = Object.values(classMap);
+      return result;
+    }
+    
+    function parseFlowchart(lines) {
+      const result = { nodes: [], connections: [], errors: [], diagramType: 'flowchart' };
+      const nodeMap = {};
+      
+      // Helper to parse a node token like "A", "A[Label]", "A{Label}", "A((Label))", "A(Label)"
+      function parseNodeToken(token) {
+        token = token.trim();
+        
+        // A((circle))
+        let m = token.match(/^(\w+)\(\((.+)\)\)$/);
+        if (m) return { id: m[1], type: 'circle', label: m[2] };
+        
+        // A[["container"]]
+        m = token.match(/^(\w+)\[\["?(.+?)"?\]\]$/);
+        if (m) return { id: m[1], type: 'container', label: m[2] };
+        
+        // A[rect]
+        m = token.match(/^(\w+)\[(.+)\]$/);
+        if (m) return { id: m[1], type: 'rect', label: m[2] };
+        
+        // A{diamond}
+        m = token.match(/^(\w+)\{(.+)\}$/);
+        if (m) return { id: m[1], type: 'diamond', label: m[2] };
+        
+        // A(pill)
+        m = token.match(/^(\w+)\((.+)\)$/);
+        if (m) return { id: m[1], type: 'pill', label: m[2] };
+        
+        // Just ID
+        m = token.match(/^(\w+)$/);
+        if (m) return { id: m[1], type: 'rect', label: m[1] };
+        
+        return null;
+      }
+      
+      // Skip flowchart directive
+      let startIdx = 0;
+      if (lines[0]?.match(/^flowchart\s+(TD|TB|LR|RL|BT)/i)) {
+        startIdx = 1;
+      }
+      
+      // Parse each line
+      for (let i = startIdx; i < lines.length; i++) {
+        const line = lines[i];
+        
+        // Skip subgraph, style, class
+        if (line.startsWith('subgraph') || line === 'end' || 
+            line.startsWith('style') || line.startsWith('class')) continue;
+        
+        // Connection pattern: NodeA --> NodeB or NodeA -->|label| NodeB
+        // Where NodeA/NodeB can be "A" or "A[Label]" or "A{Label}" etc
+        const connMatch = line.match(/^(.+?)\s*(-->|---|-\.-|==>)\s*(\|([^|]*)\|)?\s*(.+)$/);
+        if (connMatch) {
+          const fromToken = connMatch[1].trim();
+          const toToken = connMatch[5].trim();
+          const label = connMatch[4] || '';
+          
+          const fromNode = parseNodeToken(fromToken);
+          const toNode = parseNodeToken(toToken);
+          
+          if (fromNode && toNode) {
+            // Register nodes if new or update if has more info
+            if (!nodeMap[fromNode.id] || nodeMap[fromNode.id].label === fromNode.id) {
+              nodeMap[fromNode.id] = fromNode;
+            }
+            if (!nodeMap[toNode.id] || nodeMap[toNode.id].label === toNode.id) {
+              nodeMap[toNode.id] = toNode;
+            }
+            
+            result.connections.push({
+              from: fromNode.id,
+              to: toNode.id,
+              label: label
+            });
+          }
+          continue;
+        }
+        
+        // Standalone node definition
+        const node = parseNodeToken(line);
+        if (node) {
+          nodeMap[node.id] = node;
+        }
+      }
+      
+      result.nodes = Object.values(nodeMap);
+      return result;
+    }
+    
+    function layoutNodes(parsedNodes, diagramType) {
+      const startX = 100;
+      const startY = 100;
+      
+      // Sequence diagram: horizontal layout at top
+      if (diagramType === 'sequence') {
+        const spacingX = 150;
+        return parsedNodes.map((n, i) => ({
+          ...n,
+          x: startX + i * spacingX,
+          y: startY
+        }));
+      }
+      
+      // Class diagram: wider spacing
+      if (diagramType === 'class') {
+        const cols = Math.ceil(Math.sqrt(parsedNodes.length));
+        return parsedNodes.map((n, i) => ({
+          ...n,
+          x: startX + (i % cols) * 220,
+          y: startY + Math.floor(i / cols) * 180
+        }));
+      }
+      
+      // Default: grid layout
+      const cols = Math.ceil(Math.sqrt(parsedNodes.length));
+      return parsedNodes.map((n, i) => ({
+        ...n,
+        x: startX + (i % cols) * 180,
+        y: startY + Math.floor(i / cols) * 120
+      }));
+    }
+    
+    function exportMermaid() {
+      const editor = document.getElementById('mermaidEditor');
+      const errorDiv = document.getElementById('mermaidError');
+      
+      if (nodes.length > 0) {
+        editor.value = generateMermaid();
+        errorDiv.style.display = 'none';
+      } else {
+        errorDiv.textContent = 'No diagram to export';
+        errorDiv.style.display = 'block';
+      }
+    }
+    
+    function importMermaid() {
+      const editor = document.getElementById('mermaidEditor');
+      const code = editor.value.trim();
+      const errorDiv = document.getElementById('mermaidError');
+      
+      if (!code || code === 'flowchart TD' || code === 'flowchart TD\n    %% Empty diagram') {
+        errorDiv.textContent = 'No code to import';
+        errorDiv.style.display = 'block';
+        return;
+      }
+      
+      // Confirm if diagram exists
+      if (nodes.length > 0) {
+        if (!confirm('This will replace your current diagram. Continue?')) {
+          return;
+        }
+      }
+      
+      try {
+        const parsed = parseMermaid(code);
+        
+        if (parsed.nodes.length === 0) {
+          errorDiv.textContent = 'No nodes found in code';
+          errorDiv.style.display = 'block';
+          return;
+        }
+        
+        errorDiv.style.display = 'none';
+        
+        // Clear current diagram
+        saveState();
+        nodes = [];
+        connections = [];
+        sequenceFrames = [];
+        
+        // Create nodes with layout
+        const layouted = layoutNodes(parsed.nodes, parsed.diagramType);
+        const idMap = {};
+        const isSequence = parsed.diagramType === 'sequence';
+        
+        // Store sequence frames for rendering
+        if (isSequence && parsed.frames) {
+          sequenceFrames = parsed.frames;
+        }
+        
+        layouted.forEach(n => {
+          // For class diagrams, create wider/taller nodes
+          const isClass = n.type === 'class';
+          const isParticipant = n.type === 'participant' || n.type === 'actor';
+          
+          let width, height;
+          if (isClass) {
+            width = 160;
+            height = Math.max(80, 40 + (n.properties?.length || 0) * 16 + (n.methods?.length || 0) * 16);
+          } else if (isParticipant) {
+            width = 100;
+            height = 40;
+          }
+          
+          const nodeType = isParticipant ? 'rect' : (isClass ? 'rect' : n.type);
+          const node = createNode(nodeType, n.x, n.y, width, height);
+          node.label = n.label;
+          
+          // Store class properties/methods
+          if (isClass) {
+            node.isClass = true;
+            node.properties = n.properties || [];
+            node.methods = n.methods || [];
+          }
+          
+          // Mark as sequence participant
+          if (isParticipant) {
+            node.isParticipant = true;
+            node.isActor = n.type === 'actor';
+          }
+          
+          idMap[n.id] = node.id;
+        });
+        
+        // Create connections
+        if (isSequence) {
+          // Sequence diagram: messages at different Y levels
+          const messageSpacing = 50;
+          const startY = 120; // Below participant boxes
+          
+          parsed.connections.forEach((c, idx) => {
+            if (idMap[c.from] && idMap[c.to]) {
+              const fromNode = nodes.find(n => n.id === idMap[c.from]);
+              const toNode = nodes.find(n => n.id === idMap[c.to]);
+              if (fromNode && toNode) {
+                connections.push({
+                  id: generateId(),
+                  from: idMap[c.from],
+                  to: idMap[c.to],
+                  fromSide: 'bottom',
+                  toSide: 'bottom',
+                  fromIdx: 1,
+                  toIdx: 1,
+                  label: c.label || '',
+                  isSequenceMessage: true,
+                  messageY: startY + idx * messageSpacing,
+                  arrow: c.arrow || '->>',
+                  index: c.index
+                });
+              }
+            }
+          });
+        } else {
+          // Regular connections
+          parsed.connections.forEach(c => {
+            if (idMap[c.from] && idMap[c.to]) {
+              const fromNode = nodes.find(n => n.id === idMap[c.from]);
+              const toNode = nodes.find(n => n.id === idMap[c.to]);
+              if (fromNode && toNode) {
+                const { fromSide, toSide } = getOptimalSides(fromNode, toNode);
+                connections.push({
+                  id: generateId(),
+                  from: idMap[c.from],
+                  to: idMap[c.to],
+                  fromSide,
+                  toSide,
+                  fromIdx: 1,
+                  toIdx: 1,
+                  label: c.label || '',
+                  relType: c.relType
+                });
+              }
+            }
+          });
+        }
+        
+        render();
+        
+        // Center view on new content
+        const bounds = getContentBounds();
+        if (bounds) {
+          viewBox.x = bounds.minX - 100;
+          viewBox.y = bounds.minY - 100;
+          updateViewBox();
+        }
+        
+      } catch (e) {
+        errorDiv.textContent = 'Parse error: ' + e.message;
+        errorDiv.style.display = 'block';
+      }
+    }
+    
+    function updateMermaidEditor() {
+      if (mermaidSyncPaused) return;
+      const sidebar = document.getElementById('mermaidSidebar');
+      if (sidebar.classList.contains('hidden')) return;
+      
+      const editor = document.getElementById('mermaidEditor');
+      editor.value = generateMermaid();
+    }
+    
+    // Add keyboard shortcut for Mermaid toggle
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'm' && !e.ctrlKey && !e.metaKey && !e.altKey && 
+          !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        toggleMermaidSidebar();
+      }
+      // Ctrl+Enter to import Mermaid
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && 
+          document.activeElement.id === 'mermaidEditor') {
+        e.preventDefault();
+        importMermaid();
+      }
     });
     
     init();
