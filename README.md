@@ -1,18 +1,26 @@
-# Diagram Studio
+# Siren
 
-**The best of both worlds: Mermaid syntax + visual editing.**
+<p align="center">
+  <img src="siren-logo.png" alt="Siren Logo" width="200">
+</p>
 
-[**Try it now →**](https://sanath-diagram-studio.netlify.app)
+<p align="center">
+  <strong>The best of both worlds: Mermaid syntax + visual editing.</strong>
+</p>
+
+<p align="center">
+  <a href="https://sanath-diagram-studio.netlify.app"><strong>Try it now →</strong></a>
+</p>
 
 ---
 
-## Why Diagram Studio?
+## Why Siren?
 
 **Love Mermaid but frustrated you can't drag things around?**
 
 Mermaid is amazing for version-controlled, text-based diagrams. But when you need to tweak the layout, add custom styling, or just *move that one box slightly to the right* - you're stuck.
 
-Diagram Studio fixes this:
+Siren fixes this:
 
 - ✏️ **Write Mermaid** - Import any flowchart, sequence diagram, or class diagram
 - 🖱️ **Edit visually** - Drag, resize, restyle, rearrange
@@ -44,7 +52,7 @@ Diagram Studio fixes this:
 
 ## Quick Start
 
-1. Open [Diagram Studio](https://sanath-diagram-studio.netlify.app)
+1. Open [Siren](https://sanath-diagram-studio.netlify.app)
 2. Press `M` to open Mermaid editor
 3. Paste your diagram or start fresh
 4. Press `Ctrl+Enter` to import
@@ -64,8 +72,8 @@ Diagram Studio fixes this:
 
 ## Compared to Other Tools
 
-| Feature | Diagram Studio | Mermaid Live | Excalidraw | Draw.io |
-|---------|---------------|--------------|------------|---------|
+| Feature | Siren | Mermaid Live | Excalidraw | Draw.io |
+|---------|-------|--------------|------------|---------|
 | Mermaid import | ✅ | ✅ | ❌ | ❌ |
 | Visual editing | ✅ | ❌ | ✅ | ✅ |
 | Mermaid export | ✅ | ✅ | ❌ | ❌ |
@@ -87,7 +95,7 @@ Download `index.html` and open it. That's it.
 
 Or deploy to any static host:
 - Netlify
-- Vercel
+- Vercel  
 - GitHub Pages
 - Your own server
 
@@ -97,4 +105,6 @@ MIT - Do whatever you want with it.
 
 ---
 
-Made by [Sanath](https://sanath.dev)
+<p align="center">
+  Made by <a href="https://sanath.dev">Sanath</a>
+</p>
