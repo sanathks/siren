@@ -541,6 +541,8 @@
     function hideNodeTypePicker() {
       nodeTypePicker.classList.add('hidden');
       pendingConnection = null;
+      hideTempLine();
+      if (currentTool === 'select') canvas.classList.remove('show-connectors');
       document.removeEventListener('click', closePickerOnOutside);
       document.removeEventListener('keydown', closePickerOnEscape);
     }
@@ -2404,8 +2406,11 @@
         }
         
         connecting = null;
-        hideTempLine();
-        if (currentTool === 'select') canvas.classList.remove('show-connectors');
+        // Only hide temp line if not showing picker (picker needs to show the preview)
+        if (!pendingConnection) {
+          hideTempLine();
+          if (currentTool === 'select') canvas.classList.remove('show-connectors');
+        }
       }
       
       // Finish marquee selection
