@@ -1208,8 +1208,8 @@
           const zoneSpacing = 35;
           for (let y = lifeY1 + 30; y < lifeY2 - 20; y += zoneSpacing) {
             lifeline += `
-              <circle class="lifeline-connector" cx="${lifeX}" cy="${y}" r="6"
-                    fill="${COLORS.accent}" style="cursor:crosshair" 
+              <circle class="lifeline-connector" cx="${lifeX}" cy="${y}" r="3"
+                    fill="${COLORS.bg2}" stroke="${COLORS.fg}" stroke-width="1" style="cursor:crosshair" 
                     data-node="${node.id}" data-lifeline-y="${y}" data-side="bottom"/>
             `;
           }
