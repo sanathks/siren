@@ -1127,7 +1127,7 @@
             fill="${fill}" stroke="none" class="container-fill"/>
             <rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="8" 
             fill="none" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
-            <text x="${node.x + 12}" y="${node.y + 22}" fill="${node.color || COLORS.fg}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" style="pointer-events:none">${esc(node.label)}</text>`;
+            <text x="${node.x + 12}" y="${node.y + 22}" fill="${node.outlineColor || COLORS.fg}" font-size="13" font-weight="600" font-family="system-ui, sans-serif" style="pointer-events:none">${esc(node.label)}</text>`;
         } else if (node.type === 'diamond') {
           const { fill, style } = getFill(node, 'infill');
           const customPattern = getCustomPattern(node);
