@@ -85,15 +85,15 @@
 </head>
 <body class="h-screen flex flex-col">
   <!-- Top Toolbar -->
-  <header class="h-14 bg-storm-bg2 border-b border-storm-bg flex items-center px-4 z-20">
+  <header class="h-14 flex items-center px-4 z-20 absolute top-0 left-0 right-0" style="background:transparent;pointer-events:none">
     <!-- Left: Logo -->
-    <div class="flex items-center">
-      <img src="favicon-32.png" alt="Siren" style="width:28px;height:28px;margin-right:8px">
+    <div class="flex items-center" style="pointer-events:auto">
+      <img src="favicon-32.png" alt="Siren" style="width:28px;height:28px">
     </div>
     
     <!-- Center: All Tools -->
-    <div class="flex-1 flex justify-center">
-      <div class="flex items-center gap-1 bg-storm-bg rounded-lg p-1">
+    <div class="flex-1 flex justify-center" style="pointer-events:auto">
+      <div class="flex items-center gap-1 bg-storm-bg2 rounded-lg p-1 shadow-lg" style="border:1px solid rgba(255,255,255,0.1)">
         <!-- Undo/Redo -->
         <button class="tool-btn" onclick="undo()" title="Undo (Cmd+Z)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
