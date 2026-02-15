@@ -82,6 +82,15 @@ Or just open `index.html` directly.
 
 Draph is built for AI agents. Generate diagrams via API or connect to Claude Desktop via MCP.
 
+### LLM Context
+
+For AI integrations, fetch the context file:
+```
+https://draph.sanath.dev/llm.txt
+```
+
+Contains full JSON schema, color palette, and examples optimized for LLM consumption.
+
 ### API
 
 **Create diagram:**
@@ -101,7 +110,7 @@ Returns:
 - `url` - Short shareable link (for LLMs/sharing)
 - `editUrl` - Direct editor link with full data
 
-**Export as PNG:**
+**Export as PNG** *(experimental)*:
 ```bash
 curl -X POST https://draph.sanath.dev/api/diagram/image \
   -H "Content-Type: application/json" \
@@ -124,13 +133,7 @@ Add to Claude Desktop config:
 }
 ```
 
-**Tools:** `create_diagram`, `create_diagram_json`, `export_diagram_image`
-
-### LLM Context
-
-For custom integrations: `https://draph.sanath.dev/llm.txt`
-
-Contains full schema, color palette, and examples.
+**Tools:** `create_diagram`, `create_diagram_json`, `export_diagram_image` *(experimental)*
 
 ## License
 
