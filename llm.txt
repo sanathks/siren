@@ -32,10 +32,16 @@ curl -X POST https://siren.sanath.dev/api/diagram \
 Response:
 ```json
 {
-  "url": "https://siren.sanath.dev/#eyJuIjpb...",
+  "url": "https://siren.sanath.dev/d/x7k9m2pQ",
+  "editUrl": "https://siren.sanath.dev/#eyJuIjpb...",
+  "id": "x7k9m2pQ",
   "data": { "n": [...], "c": [...] }
 }
 ```
+
+**IMPORTANT: Always share the short `url` field, NOT the long `editUrl`.**
+- `url` - Short URL for sharing (e.g. `siren.sanath.dev/d/x7k9m2pQ`)
+- `editUrl` - Full URL with embedded data (very long, may break in chat)
 
 ## API Endpoints
 
