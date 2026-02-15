@@ -1090,14 +1090,15 @@
         const getFill = (node, defaultStyle) => {
           const style = node.fillStyle || defaultStyle;
           let fill;
-          if (node.color) {
+          const hasColor = node.color && node.color !== 'transparent';
+          if (hasColor) {
             if (style === 'outline') fill = 'transparent';
             else if (style === 'infill') fill = node.type === 'container' ? node.color + '25' : node.color;
             else if (style === 'stripe') fill = `url(#stripe-${node.id})`;
             else if (style === 'grid') fill = `url(#grid-${node.id})`;
           } else {
             if (style === 'outline') fill = 'transparent';
-            else if (style === 'infill') fill = COLORS.bg2;
+            else if (style === 'infill') fill = node.type === 'container' ? (node.outlineColor || COLORS.fg) + '25' : COLORS.bg2;
             else if (style === 'stripe') fill = 'url(#stripe)';
             else if (style === 'grid') fill = 'url(#grid-fill)';
           }
