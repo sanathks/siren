@@ -51,6 +51,10 @@ Siren is different:
 
 Already have diagrams in Mermaid? Import them, edit visually, export back to code. Best of both worlds.
 
+### Plus: AI-Native
+
+Built for LLMs from day one. API endpoints, MCP server for Claude Desktop, and `/llm.txt` context file for custom integrations.
+
 ## Quick Start
 
 **Online:** [siren.sanath.dev](https://siren.sanath.dev)
@@ -63,6 +67,73 @@ npx serve
 ```
 
 Or just download `index.html` and open it.
+
+## AI & LLM Integration
+
+Siren is built for AI agents. Generate diagrams programmatically via API or connect directly to Claude Desktop via MCP.
+
+### API Endpoints
+
+**Create shareable diagram:**
+```bash
+curl -X POST https://siren.sanath.dev/api/diagram \
+  -H "Content-Type: application/json" \
+  -d '{"mermaid": "flowchart TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Done]"}'
+```
+
+Returns:
+```json
+{
+  "url": "https://siren.sanath.dev/#eyJuIjpb...",
+  "data": { "n": [...], "c": [...] }
+}
+```
+
+**Export as PNG:**
+```bash
+curl -X POST https://siren.sanath.dev/api/diagram/image \
+  -H "Content-Type: application/json" \
+  -d '{"mermaid": "flowchart TD\n  A[Start] --> B[End]"}' \
+  --output diagram.png
+```
+
+### MCP Server (Claude Desktop)
+
+Connect Siren directly to Claude Desktop for natural language diagram creation.
+
+**Setup:**
+
+Add to your Claude Desktop config (`~/.config/claude/claude_desktop_config.json` on Linux/Mac):
+
+```json
+{
+  "mcpServers": {
+    "siren": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://siren.sanath.dev/mcp"]
+    }
+  }
+}
+```
+
+**Available tools:**
+- `create_diagram` - Create diagram from Mermaid code
+- `create_diagram_json` - Create diagram from JSON nodes/connections
+- `export_diagram_image` - Export diagram as PNG
+
+**Example prompt:**
+> "Create a flowchart showing user authentication flow with login, validation, and redirect steps"
+
+Claude will generate the diagram and return a shareable URL.
+
+### LLM Context File
+
+For custom AI integrations, fetch the context file:
+```
+https://siren.sanath.dev/llm.txt
+```
+
+Contains color palette, JSON schema, and API documentation optimized for LLM consumption.
 
 ## Keyboard Shortcuts
 
