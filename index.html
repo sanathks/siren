@@ -88,7 +88,7 @@
   <header class="h-14 bg-storm-bg2 border-b border-storm-bg flex items-center px-4 z-20">
     <!-- Left: Logo -->
     <div class="flex items-center">
-      <div class="text-storm-accent font-bold text-lg mr-2">DS</div>
+      <img src="favicon-32.png" alt="Siren" style="width:28px;height:28px;margin-right:8px">
     </div>
     
     <!-- Center: All Tools -->
@@ -138,6 +138,20 @@
             <polyline points="12 5 19 5 19 12"/>
           </svg>
         </button>
+        <!-- Arrange -->
+        <button class="tool-btn" onclick="arrangeDiagram()" title="Auto-Arrange (A)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/>
+            <rect x="9" y="15" width="6" height="6" rx="1"/>
+            <path d="M6 9v3h3M18 9v3h-3M12 15v-3"/>
+          </svg>
+        </button>
+        <!-- Code toggle -->
+        <button id="mermaidToggle" class="tool-btn" onclick="toggleMermaidSidebar()" title="Mermaid Code (M)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </button>
         <div class="divider"></div>
         <!-- Line style -->
         <div class="dropdown" id="lineDropdown">
@@ -159,21 +173,6 @@
           </svg>
         </button>
         <div class="divider"></div>
-        <!-- Code toggle -->
-        <button id="mermaidToggle" class="tool-btn" onclick="toggleMermaidSidebar()" title="Mermaid Code (M)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-          </svg>
-        </button>
-        <!-- Arrange -->
-        <button class="tool-btn" onclick="arrangeDiagram()" title="Auto-Arrange (A)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/>
-            <rect x="9" y="15" width="6" height="6" rx="1"/>
-            <path d="M6 9v3h3M18 9v3h-3M12 15v-3"/>
-          </svg>
-        </button>
-        <div class="divider"></div>
         <!-- Export -->
         <div class="dropdown" id="exportDropdown">
           <button class="tool-btn" onclick="toggleDropdown('exportDropdown')" title="Export (9)">
@@ -187,14 +186,14 @@
           </div>
         </div>
         <!-- Share -->
-        <button class="tool-btn" style="background:rgba(158,206,106,0.2);color:#9ece6a" onclick="shareDiagram()" title="Copy Share Link (0)">
+        <button class="tool-btn" onclick="shareDiagram()" title="Copy Share Link (0)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
             <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
           </svg>
         </button>
         <!-- Clear -->
-        <button class="tool-btn" style="background:rgba(247,118,142,0.15);color:#f7768e" onclick="clearCanvas()" title="Clear Canvas">
+        <button class="tool-btn" onclick="clearCanvas()" title="Clear Canvas">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
           </svg>
