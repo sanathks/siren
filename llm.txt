@@ -1,6 +1,6 @@
-# Siren - LLM Integration Guide
+# Draph - LLM Integration Guide
 
-Siren is a visual diagram editor at https://siren.sanath.dev
+Draph is a visual diagram editor at https://draph.sanath.dev
 
 ## API Endpoints
 
@@ -8,12 +8,12 @@ Siren is a visual diagram editor at https://siren.sanath.dev
 Create diagram, returns shareable URL.
 
 ```bash
-curl -X POST https://siren.sanath.dev/api/diagram \
+curl -X POST https://draph.sanath.dev/api/diagram \
   -H "Content-Type: application/json" \
   -d '{"nodes": [...], "connections": [...]}'
 ```
 
-Response: `{"url": "https://siren.sanath.dev/d/abc123", ...}`
+Response: `{"url": "https://draph.sanath.dev/d/abc123", ...}`
 
 **Always share the short `url`, not the long `editUrl`.**
 
@@ -317,9 +317,9 @@ For Claude Desktop integration:
 ```json
 {
   "mcpServers": {
-    "siren": {
+    "draph": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://siren.sanath.dev/mcp"]
+      "args": ["-y", "mcp-remote", "https://draph.sanath.dev/mcp"]
     }
   }
 }

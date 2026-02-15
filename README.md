@@ -1,7 +1,7 @@
-# Siren
+# Draph
 
 <p align="center">
-  <img src="resources/siren-logo.png" alt="Siren Logo" width="200">
+  <img src="resources/draph-logo.png" alt="Draph Logo" width="200">
 </p>
 
 <p align="center">
@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://siren.sanath.dev"><strong>Try it now →</strong></a>
+  <a href="https://draph.sanath.dev"><strong>Try it now →</strong></a>
 </p>
 
 ---
@@ -26,13 +26,13 @@ No account. No install. No learning curve.
 npx serve
 ```
 
-## Why Siren?
+## Why Draph?
 
 Most diagram tools are either:
 - **Too heavy** - Login walls, slow load times, cluttered UI
 - **Too limited** - Can't customize, can't export, can't share easily
 
-Siren is different:
+Draph is different:
 
 - ⚡ **Instant** - Opens in milliseconds, works offline
 - 🎨 **Visual** - Drag, resize, style - everything is editable
@@ -57,12 +57,12 @@ Built for LLMs from day one. API endpoints, MCP server for Claude Desktop, and `
 
 ## Quick Start
 
-**Online:** [siren.sanath.dev](https://siren.sanath.dev)
+**Online:** [draph.sanath.dev](https://draph.sanath.dev)
 
 **Local:**
 ```bash
-git clone https://github.com/user/siren.git
-cd siren
+git clone https://github.com/user/draph.git
+cd draph
 npx serve
 ```
 
@@ -70,13 +70,13 @@ Or just download `index.html` and open it.
 
 ## AI & LLM Integration
 
-Siren is built for AI agents. Generate diagrams programmatically via API or connect directly to Claude Desktop via MCP.
+Draph is built for AI agents. Generate diagrams programmatically via API or connect directly to Claude Desktop via MCP.
 
 ### API Endpoints
 
 **Create shareable diagram:**
 ```bash
-curl -X POST https://siren.sanath.dev/api/diagram \
+curl -X POST https://draph.sanath.dev/api/diagram \
   -H "Content-Type: application/json" \
   -d '{"mermaid": "flowchart TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Done]"}'
 ```
@@ -84,14 +84,14 @@ curl -X POST https://siren.sanath.dev/api/diagram \
 Returns:
 ```json
 {
-  "url": "https://siren.sanath.dev/#eyJuIjpb...",
+  "url": "https://draph.sanath.dev/#eyJuIjpb...",
   "data": { "n": [...], "c": [...] }
 }
 ```
 
 **Export as PNG:**
 ```bash
-curl -X POST https://siren.sanath.dev/api/diagram/image \
+curl -X POST https://draph.sanath.dev/api/diagram/image \
   -H "Content-Type: application/json" \
   -d '{"mermaid": "flowchart TD\n  A[Start] --> B[End]"}' \
   --output diagram.png
@@ -99,7 +99,7 @@ curl -X POST https://siren.sanath.dev/api/diagram/image \
 
 ### MCP Server (Claude Desktop)
 
-Connect Siren directly to Claude Desktop for natural language diagram creation.
+Connect Draph directly to Claude Desktop for natural language diagram creation.
 
 **Setup:**
 
@@ -108,9 +108,9 @@ Add to your Claude Desktop config (`~/.config/claude/claude_desktop_config.json`
 ```json
 {
   "mcpServers": {
-    "siren": {
+    "draph": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://siren.sanath.dev/mcp"]
+      "args": ["-y", "mcp-remote", "https://draph.sanath.dev/mcp"]
     }
   }
 }
@@ -130,7 +130,7 @@ Claude will generate the diagram and return a shareable URL.
 
 For custom AI integrations, fetch the context file:
 ```
-https://siren.sanath.dev/llm.txt
+https://draph.sanath.dev/llm.txt
 ```
 
 Contains color palette, JSON schema, and API documentation optimized for LLM consumption.
