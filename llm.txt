@@ -1,108 +1,42 @@
 # Siren - LLM Integration Guide
 
-Siren is a visual diagram editor. AI agents can create diagrams programmatically via API.
+Siren is a visual diagram editor at https://siren.sanath.dev
 
-## Quick Start
+## API Endpoints
+
+### POST /api/diagram
+Create diagram, returns shareable URL.
 
 ```bash
 curl -X POST https://siren.sanath.dev/api/diagram \
   -H "Content-Type: application/json" \
-  -d '{"mermaid": "flowchart TD\n  A[Start] --> B[End]"}'
+  -d '{"nodes": [...], "connections": [...]}'
 ```
 
-Response:
-```json
-{
-  "url": "https://siren.sanath.dev/d/x7k9m2pQ",
-  "editUrl": "https://siren.sanath.dev/#eyJuIjpb...",
-  "id": "x7k9m2pQ"
-}
-```
+Response: `{"url": "https://siren.sanath.dev/d/abc123", ...}`
 
 **Always share the short `url`, not the long `editUrl`.**
 
----
-
-## Supported Diagram Types
-
-### 1. Flowchart (Default)
-
-```
-flowchart TD
-  A[Rectangle] --> B(Pill)
-  B --> C{Diamond}
-  C -->|Yes| D((Circle))
-  C -->|No| E[End]
-```
-
-Directions: `TD` (top-down), `LR` (left-right), `RL`, `BT`
-
-### 2. Sequence Diagram
-
-```
-sequenceDiagram
-  participant A as Alice
-  participant B as Bob
-  A->>B: Hello
-  B-->>A: Hi there
-  loop Every minute
-    A->>B: Ping
-  end
-  alt Success
-    B->>A: Pong
-  else Failure
-    B->>A: Error
-  end
-```
-
-### 3. Class Diagram
-
-```
-classDiagram
-  class User {
-    +String name
-    +login()
-  }
-  class Admin {
-    +deleteUser()
-  }
-  User <|-- Admin
-```
+### POST /api/diagram/image  
+Export as PNG. Same body as above, returns image binary.
 
 ---
 
 ## Node Types
 
-| Type | Mermaid Syntax | JSON `type` | Description |
-|------|----------------|-------------|-------------|
-| Rectangle | `A[Label]` | `rect` | Standard process node |
-| Pill | `A(Label)` | `pill` | Rounded rectangle |
-| Diamond | `A{Label}` | `diamond` | Decision/condition |
-| Circle | `A((Label))` | `circle` | Terminal/event |
-| Container | `A[["Label"]]` | `container` | **Group box** for organizing nodes |
-| Text | - | `text` | Free text annotation |
-| Arrow | - | `line` | Standalone arrow/line |
-
-### Container (Grouping)
-
-Use containers to visually group related nodes:
-
-```json
-{
-  "nodes": [
-    {"id": "g1", "type": "container", "label": "Input Sources", "x": 50, "y": 50, "width": 400, "height": 120},
-    {"id": "n1", "type": "rect", "label": "PDF", "x": 70, "y": 90, "width": 100, "height": 44},
-    {"id": "n2", "type": "rect", "label": "HTML", "x": 190, "y": 90, "width": 100, "height": 44},
-    {"id": "n3", "type": "rect", "label": "Audio", "x": 310, "y": 90, "width": 100, "height": 44}
-  ]
-}
-```
-
-Containers render as dashed-border boxes. Place them BEFORE the nodes they contain (lower z-index).
+| Type | Description | Default Size | Mermaid Syntax |
+|------|-------------|--------------|----------------|
+| `rect` | Rectangle | 120×44 | `A[Label]` |
+| `pill` | Rounded rectangle | 120×44 | `A(Label)` |
+| `diamond` | Decision/condition | 80×60 | `A{Label}` |
+| `circle` | Terminal/event | 80×80 | `A((Label))` |
+| `container` | Group box (dashed border) | 280×180 | `A[["Label"]]` |
+| `text` | Free text annotation | 100×24 | - |
+| `line` | Standalone arrow | 100×0 | - |
 
 ---
 
-## Node Properties (JSON)
+## Node Properties
 
 ```json
 {
@@ -119,42 +53,41 @@ Containers render as dashed-border boxes. Place them BEFORE the nodes they conta
 }
 ```
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | string | Unique identifier (required) |
-| `type` | string | Node type (required) |
-| `label` | string | Display text |
-| `x`, `y` | number | Position in pixels |
-| `width`, `height` | number | Size in pixels |
-| `color` | hex | Fill color (omit for no fill, don't use "transparent") |
-| `outlineColor` | hex | Border color |
-| `fillStyle` | string | `outline`, `infill`, `stripe`, or `grid` |
+### All Node Properties
 
-### Fill Styles
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | string | Yes | Unique identifier |
+| `type` | string | Yes | `rect`, `pill`, `diamond`, `circle`, `container`, `text`, `line` |
+| `label` | string | No | Display text |
+| `x` | number | Yes | X position in pixels |
+| `y` | number | Yes | Y position in pixels |
+| `width` | number | No | Width in pixels |
+| `height` | number | No | Height in pixels |
+| `color` | hex | No | Fill color. **Omit for no fill (don't use "transparent")** |
+| `outlineColor` | hex | No | Border/stroke color |
+| `fillStyle` | string | No | Fill pattern (see below) |
+| `lineStyle` | string | No | For `line` type: `solid` or `dashed` |
+
+### fillStyle Property
 
 **Property name is `fillStyle` (not `fill`)**
 
-Valid values:
-- `"outline"` - Transparent fill, colored border only
-- `"infill"` - Solid color fill (default)
-- `"stripe"` - Diagonal stripe pattern
-- `"grid"` - Dot grid pattern
+| Value | Description |
+|-------|-------------|
+| `"outline"` | Transparent fill, border only |
+| `"infill"` | Solid color fill (default) |
+| `"stripe"` | Diagonal stripe pattern |
+| `"grid"` | Dot grid pattern |
 
-Example with stripe pattern:
+Example:
 ```json
 {"id": "n1", "type": "rect", "label": "Striped", "x": 100, "y": 100, "fillStyle": "stripe", "color": "#7aa2f7"}
 ```
 
-### Sequence Diagram Node Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `isParticipant` | boolean | Mark as sequence participant |
-| `hasLifeline` | boolean | Show vertical lifeline below node |
-
 ---
 
-## Connection Properties (JSON)
+## Connection Properties
 
 ```json
 {
@@ -162,146 +95,224 @@ Example with stripe pattern:
   "from": "n1",
   "to": "n2",
   "label": "next",
-  "lineStyle": "solid",
-  "color": "#414868"
+  "color": "#414868",
+  "strokeStyle": "solid"
 }
 ```
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `id` | string | Unique identifier |
-| `from` | string | Source node ID |
-| `to` | string | Target node ID |
-| `label` | string | Edge label text |
-| `lineStyle` | string | `solid` or `dashed` |
-| `color` | hex | Line color |
-
-### Sequence Diagram Connection Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `isSequenceMessage` | boolean | Render as horizontal message |
-| `messageY` | number | Y position of message line |
-| `arrow` | string | Arrow type: `->>`, `-->>`, `-)`, `--)` |
-| `index` | number | Message order (for vertical positioning) |
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | string | Yes | Unique identifier |
+| `from` | string | Yes | Source node ID |
+| `to` | string | Yes | Target node ID |
+| `label` | string | No | Edge label text |
+| `color` | hex | No | Line color |
+| `strokeStyle` | string | No | `solid` or `dashed` |
+| `lineStyle` | string | No | Alias for strokeStyle |
 
 ---
 
-## Arrow Types (Mermaid)
+## Container/Grouping
 
-| Syntax | Description |
-|--------|-------------|
-| `-->` | Solid arrow |
-| `---` | Solid line (no arrow) |
-| `-.->` | Dashed arrow |
-| `==>` | Thick arrow |
+Containers create visual group boxes with dashed borders.
 
-Sequence arrows:
-| Syntax | Description |
-|--------|-------------|
-| `->>` | Solid with filled head |
-| `-->>` | Dashed with filled head |
-| `-)` | Solid with open head (async) |
-| `--)` | Dashed with open head |
-
----
-
-## Color Palette (Tokyo Night Storm)
-
-| Color | Hex |
-|-------|-----|
-| Blue | `#7aa2f7` |
-| Cyan | `#7dcfff` |
-| Green | `#9ece6a` |
-| Red | `#f7768e` |
-| Yellow | `#e0af68` |
-| Magenta | `#bb9af7` |
-| Orange | `#ff9e64` |
-| Border | `#414868` |
-| Background | `#24283b` |
-| Foreground | `#c0caf5` |
-
----
-
-## API Endpoints
-
-### POST /api/diagram
-
-Create diagram, returns shareable URL.
-
-**Option 1: Mermaid code**
-```json
-{"mermaid": "flowchart TD\n  A --> B"}
-```
-
-**Option 2: JSON nodes/connections**
-```json
-{
-  "nodes": [...],
-  "connections": [...]
-}
-```
-
-### POST /api/diagram/image
-
-Export as PNG image.
-
-```bash
-curl -X POST https://siren.sanath.dev/api/diagram/image \
-  -H "Content-Type: application/json" \
-  -d '{"mermaid": "flowchart TD\n  A --> B"}' \
-  --output diagram.png
-```
-
-Options: `width` (default 1200), `height` (default 800), `scale` (default 2)
-
----
-
-## Complex Example: RAG Pipeline with Groups
+**Important:** Define containers BEFORE the nodes they contain (render order).
 
 ```json
 {
   "nodes": [
-    {"id": "g1", "type": "container", "label": "Input Sources", "x": 50, "y": 30, "width": 520, "height": 100},
-    {"id": "i1", "type": "rect", "label": "PDF/DOCX", "x": 70, "y": 60, "width": 110, "height": 44, "color": "#9ece6a"},
-    {"id": "i2", "type": "rect", "label": "HTML/Images", "x": 200, "y": 60, "width": 110, "height": 44},
-    {"id": "i3", "type": "rect", "label": "Audio/OCR", "x": 330, "y": 60, "width": 110, "height": 44},
-    {"id": "i4", "type": "rect", "label": "User Query", "x": 460, "y": 60, "width": 100, "height": 44},
-    
-    {"id": "g2", "type": "container", "label": "Retrieval", "x": 50, "y": 280, "width": 400, "height": 100},
-    {"id": "r1", "type": "rect", "label": "Vector Search", "x": 70, "y": 310, "width": 110, "height": 44},
-    {"id": "r2", "type": "rect", "label": "BM25", "x": 200, "y": 310, "width": 110, "height": 44},
-    {"id": "r3", "type": "rect", "label": "Query Rewrite", "x": 330, "y": 310, "width": 100, "height": 44},
-    
-    {"id": "p1", "type": "rect", "label": "Docling", "x": 140, "y": 160, "width": 120, "height": 44},
-    {"id": "p2", "type": "rect", "label": "OpenSearch", "x": 300, "y": 160, "width": 120, "height": 44},
-    {"id": "rr", "type": "rect", "label": "Re-ranking", "x": 200, "y": 420, "width": 120, "height": 44},
-    {"id": "llm", "type": "rect", "label": "LLM Generation", "x": 200, "y": 500, "width": 120, "height": 44},
-    {"id": "out", "type": "rect", "label": "Response", "x": 200, "y": 580, "width": 120, "height": 44}
+    {"id": "g1", "type": "container", "label": "Input Layer", "x": 50, "y": 50, "width": 400, "height": 150, "outlineColor": "#9ece6a"},
+    {"id": "n1", "type": "rect", "label": "Node A", "x": 70, "y": 100, "width": 100, "height": 44},
+    {"id": "n2", "type": "rect", "label": "Node B", "x": 200, "y": 100, "width": 100, "height": 44}
+  ]
+}
+```
+
+Container tips:
+- Set `outlineColor` for visible border and label
+- Omit `color` property (no fill needed)
+- Label appears in top-left corner
+- Use `fillStyle: "outline"` (default for containers)
+
+---
+
+## Sequence Diagrams
+
+For sequence diagrams, nodes can have lifelines and connections become horizontal messages.
+
+### Sequence Node Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `isParticipant` | boolean | Mark as sequence participant |
+| `hasLifeline` | boolean | Show vertical dashed lifeline below |
+| `isActor` | boolean | Render as actor (stick figure) |
+
+### Sequence Connection Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `isSequenceMessage` | boolean | Render as horizontal message line |
+| `messageY` | number | Y position of the message line |
+| `index` | number | Message order (for vertical positioning) |
+| `arrow` | string | Arrow style: `->>`, `-->>`, `-)`, `--)` |
+
+Arrow types:
+- `->>` Solid arrow, filled head
+- `-->>` Dashed arrow, filled head  
+- `-)` Solid arrow, open head (async)
+- `--)` Dashed arrow, open head (async)
+
+### Sequence Example
+
+```json
+{
+  "nodes": [
+    {"id": "a", "type": "rect", "label": "Alice", "x": 100, "y": 50, "isParticipant": true, "hasLifeline": true},
+    {"id": "b", "type": "rect", "label": "Bob", "x": 300, "y": 50, "isParticipant": true, "hasLifeline": true}
   ],
   "connections": [
-    {"id": "c1", "from": "i1", "to": "p1"},
-    {"id": "c2", "from": "i2", "to": "p1"},
-    {"id": "c3", "from": "i3", "to": "p2"},
-    {"id": "c4", "from": "i4", "to": "p2"},
-    {"id": "c5", "from": "p1", "to": "r1"},
-    {"id": "c6", "from": "p1", "to": "r2"},
-    {"id": "c7", "from": "p2", "to": "r2"},
-    {"id": "c8", "from": "p2", "to": "r3"},
-    {"id": "c9", "from": "r1", "to": "rr"},
-    {"id": "c10", "from": "r2", "to": "rr"},
-    {"id": "c11", "from": "r3", "to": "rr"},
-    {"id": "c12", "from": "rr", "to": "llm"},
-    {"id": "c13", "from": "llm", "to": "out"}
+    {"id": "m1", "from": "a", "to": "b", "label": "Hello", "isSequenceMessage": true, "messageY": 150, "index": 0, "arrow": "->>"},
+    {"id": "m2", "from": "b", "to": "a", "label": "Hi!", "isSequenceMessage": true, "messageY": 200, "index": 1, "arrow": "-->>"}
   ]
 }
 ```
 
 ---
 
+## Class Diagrams
+
+For UML class diagrams with properties and methods.
+
+### Class Node Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `isClass` | boolean | Render as UML class box |
+| `properties` | string[] | List of properties (e.g., `["+name: string", "-id: int"]`) |
+| `methods` | string[] | List of methods (e.g., `["+getName()", "-setId(int)"]`) |
+
+Visibility prefixes: `+` public, `-` private, `#` protected, `~` package
+
+### Class Example
+
+```json
+{
+  "nodes": [
+    {
+      "id": "user",
+      "type": "rect",
+      "label": "User",
+      "x": 100,
+      "y": 100,
+      "width": 150,
+      "height": 120,
+      "isClass": true,
+      "properties": ["+name: string", "+email: string", "-password: string"],
+      "methods": ["+login()", "+logout()", "-hashPassword()"]
+    }
+  ]
+}
+```
+
+---
+
+## Color Palette (Tokyo Night Storm)
+
+| Name | Hex | Usage |
+|------|-----|-------|
+| Blue | `#7aa2f7` | Primary accent |
+| Cyan | `#7dcfff` | Secondary accent |
+| Green | `#9ece6a` | Success, Layer 1 |
+| Red | `#f7768e` | Error, danger |
+| Yellow | `#e0af68` | Warning, decisions |
+| Magenta | `#bb9af7` | Special, Layer 3 |
+| Orange | `#ff9e64` | Attention, output |
+| Foreground | `#c0caf5` | Text, light borders |
+| Border | `#414868` | Default borders |
+| Background | `#24283b` | Canvas background |
+
+---
+
+## Mermaid Syntax Support
+
+The API accepts Mermaid code via `{"mermaid": "..."}`:
+
+### Flowchart
+```
+flowchart TD
+  A[Rectangle] --> B(Pill)
+  B --> C{Diamond}
+  C -->|Yes| D((Circle))
+  C -->|No| E[End]
+```
+
+Directions: `TD` (top-down), `LR` (left-right), `RL`, `BT`
+
+### Sequence Diagram
+```
+sequenceDiagram
+  participant A as Alice
+  participant B as Bob
+  A->>B: Hello
+  B-->>A: Hi
+  loop Every minute
+    A->>B: Ping
+  end
+```
+
+### Class Diagram
+```
+classDiagram
+  class User {
+    +String name
+    +login()
+  }
+  User <|-- Admin
+```
+
+---
+
+## Complete Example: Architecture Diagram with Groups
+
+```json
+{
+  "nodes": [
+    {"id": "g1", "type": "container", "label": "Frontend", "x": 50, "y": 50, "width": 300, "height": 150, "outlineColor": "#9ece6a"},
+    {"id": "n1", "type": "rect", "label": "React App", "x": 80, "y": 100, "width": 100, "height": 44},
+    {"id": "n2", "type": "rect", "label": "Next.js", "x": 200, "y": 100, "width": 100, "height": 44},
+    
+    {"id": "g2", "type": "container", "label": "Backend", "x": 50, "y": 230, "width": 300, "height": 150, "outlineColor": "#7aa2f7"},
+    {"id": "n3", "type": "rect", "label": "API Server", "x": 80, "y": 280, "width": 100, "height": 44},
+    {"id": "n4", "type": "pill", "label": "Auth", "x": 200, "y": 280, "width": 100, "height": 44},
+    
+    {"id": "n5", "type": "circle", "label": "DB", "x": 400, "y": 280, "width": 60, "height": 60, "color": "#bb9af7"}
+  ],
+  "connections": [
+    {"id": "c1", "from": "n1", "to": "n3"},
+    {"id": "c2", "from": "n2", "to": "n3"},
+    {"id": "c3", "from": "n3", "to": "n4"},
+    {"id": "c4", "from": "n4", "to": "n5"}
+  ]
+}
+```
+
+---
+
+## Tips
+
+1. **Containers first** - Define containers before contained nodes
+2. **No "transparent"** - Omit `color` instead of setting `"transparent"`
+3. **fillStyle not fill** - Use `fillStyle` property for patterns
+4. **outlineColor for containers** - Sets both border and label color
+5. **Spacing** - Use multiples of 20px for grid alignment
+6. **Short URLs** - Always share the `url` field, not `editUrl`
+
+---
+
 ## MCP Server
 
-For Claude Desktop, add to config:
+For Claude Desktop integration:
 
 ```json
 {
@@ -315,14 +326,3 @@ For Claude Desktop, add to config:
 ```
 
 Tools: `create_diagram`, `create_diagram_json`, `export_diagram_image`
-
----
-
-## Tips
-
-1. **Containers first** - Define container nodes before the nodes they contain
-2. **Use JSON for complex layouts** - Mermaid is great for simple flows; JSON gives precise positioning
-3. **Share short URLs** - Always use the `url` field, not `editUrl`
-4. **Consistent spacing** - Use multiples of 20px for grid alignment
-5. **No "transparent"** - Omit `color` property instead of `"transparent"`. For outline-only nodes, set `fillStyle: "outline"`
-6. **Container styling** - Containers look best with just `outlineColor` set (no `color`). The label uses the outline color.
