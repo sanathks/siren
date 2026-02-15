@@ -582,8 +582,27 @@
         connections = data.c || [];
         idCounter = Math.max(...nodes.map(n => parseInt(n.id.slice(1)) || 0), 0) + 1;
         const rect = canvas.getBoundingClientRect();
-        // Restore viewport position if saved
-        if (data.v) {
+        // Restore viewport position if saved, but verify content is visible
+        let shouldAutoCenter = !data.v;
+        if (data.v && nodes.length > 0) {
+          // Check if saved viewport actually shows the content
+          const contentMinX = Math.min(...nodes.map(n => n.x));
+          const contentMaxX = Math.max(...nodes.map(n => n.x + (n.width || 120)));
+          const contentMinY = Math.min(...nodes.map(n => n.y));
+          const savedVx = data.v.x || 0;
+          const savedVy = data.v.y || 0;
+          const savedZoom = data.v.z || 1;
+          const savedVw = rect.width * savedZoom;
+          const savedVh = rect.height * savedZoom;
+          // If content is completely outside saved viewport, auto-center instead
+          if (contentMaxX < savedVx || contentMinX > savedVx + savedVw ||
+              contentMinY > savedVy + savedVh) {
+            shouldAutoCenter = true;
+            console.log('Saved viewport misses content, auto-centering');
+          }
+        }
+        
+        if (data.v && !shouldAutoCenter) {
           viewBox.x = data.v.x || 0;
           viewBox.y = data.v.y || 0;
           zoom = data.v.z || 1;
