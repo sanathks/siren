@@ -132,10 +132,18 @@ Containers render as dashed-border boxes. Place them BEFORE the nodes they conta
 
 ### Fill Styles
 
-- `outline` - Transparent fill, colored border only
-- `infill` - Solid color fill (default for most nodes)
-- `stripe` - Diagonal stripe pattern
-- `grid` - Dot grid pattern
+**Property name is `fillStyle` (not `fill`)**
+
+Valid values:
+- `"outline"` - Transparent fill, colored border only
+- `"infill"` - Solid color fill (default)
+- `"stripe"` - Diagonal stripe pattern
+- `"grid"` - Dot grid pattern
+
+Example with stripe pattern:
+```json
+{"id": "n1", "type": "rect", "label": "Striped", "x": 100, "y": 100, "fillStyle": "stripe", "color": "#7aa2f7"}
+```
 
 ### Sequence Diagram Node Properties
 
