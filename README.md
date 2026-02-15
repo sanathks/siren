@@ -41,7 +41,7 @@
 ### Import/Export
 - **Mermaid import** - Paste Mermaid code, get editable diagram
 - **PNG/SVG export** - High-res images for docs
-- **Share URLs** - Every diagram gets a short URL
+- **Share URLs** - URL contains full diagram state
 - **JSON** - Full control over positioning
 
 ## Quick Start
