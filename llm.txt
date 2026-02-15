@@ -1,32 +1,13 @@
 # Siren - LLM Integration Guide
 
-Siren is a visual diagram editor. AI agents can create diagrams programmatically.
-
-## Color Palette (Tokyo Night Storm)
-
-Available colors:
-
-| Color     | Hex       |
-|-----------|-----------|
-| Background| `#24283b` |
-| Foreground| `#c0caf5` |
-| Blue      | `#7aa2f7` |
-| Cyan      | `#7dcfff` |
-| Green     | `#9ece6a` |
-| Red       | `#f7768e` |
-| Yellow    | `#e0af68` |
-| Magenta   | `#bb9af7` |
-| Orange    | `#ff9e64` |
-| Border    | `#414868` |
+Siren is a visual diagram editor. AI agents can create diagrams programmatically via API.
 
 ## Quick Start
-
-Generate a shareable diagram URL by calling the API:
 
 ```bash
 curl -X POST https://siren.sanath.dev/api/diagram \
   -H "Content-Type: application/json" \
-  -d '{"mermaid": "flowchart TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Action]\n  B -->|No| D[End]"}'
+  -d '{"mermaid": "flowchart TD\n  A[Start] --> B[End]"}'
 ```
 
 Response:
@@ -34,177 +15,17 @@ Response:
 {
   "url": "https://siren.sanath.dev/d/x7k9m2pQ",
   "editUrl": "https://siren.sanath.dev/#eyJuIjpb...",
-  "id": "x7k9m2pQ",
-  "data": { "n": [...], "c": [...] }
+  "id": "x7k9m2pQ"
 }
 ```
 
-**IMPORTANT: Always share the short `url` field, NOT the long `editUrl`.**
-- `url` - Short URL for sharing (e.g. `siren.sanath.dev/d/x7k9m2pQ`)
-- `editUrl` - Full URL with embedded data (very long, may break in chat)
-
-## API Endpoints
-
-### 1. Generate Shareable URL
-
-**POST https://siren.sanath.dev/api/diagram**
-
-Returns an interactive URL that users can open and edit.
-
-### 2. Export as PNG Image
-
-**POST https://siren.sanath.dev/api/diagram/image**
-
-Returns a PNG image file directly. Use this when you need to embed or download a diagram image.
-
-```bash
-curl -X POST https://siren.sanath.dev/api/diagram/image \
-  -H "Content-Type: application/json" \
-  -d '{"mermaid": "flowchart TD\n  A[Start] --> B[End]"}' \
-  --output diagram.png
-```
-
-Optional parameters:
-- `width`: Viewport width (default: 1200)
-- `height`: Viewport height (default: 800)
-- `scale`: Device scale factor for higher resolution (default: 2)
+**Always share the short `url`, not the long `editUrl`.**
 
 ---
 
-**POST https://siren.sanath.dev/api/diagram**
+## Supported Diagram Types
 
-### Option 1: Send Mermaid Code
-
-```json
-{
-  "mermaid": "flowchart TD\n  A[Start] --> B[End]"
-}
-```
-
-### Option 2: Send JSON Directly
-
-```json
-{
-  "nodes": [
-    {
-      "id": "n1",
-      "type": "rect",
-      "label": "Start",
-      "x": 100,
-      "y": 100,
-      "width": 120,
-      "height": 44
-    },
-    {
-      "id": "n2",
-      "type": "diamond",
-      "label": "Decision?",
-      "x": 100,
-      "y": 200,
-      "width": 100,
-      "height": 60
-    }
-  ],
-  "connections": [
-    {
-      "id": "c1",
-      "from": "n1",
-      "to": "n2",
-      "label": "next"
-    }
-  ]
-}
-```
-
-## JSON Schema
-
-### Node Types
-
-| Type | Description | Default Size |
-|------|-------------|--------------|
-| `rect` | Rectangle | 120x44 |
-| `pill` | Rounded rectangle | 120x44 |
-| `diamond` | Decision diamond | 100x60 |
-| `circle` | Circle | 60x60 |
-| `container` | Grouping box | 200x150 |
-| `text` | Text label | auto |
-
-### Node Properties
-
-```json
-{
-  "id": "n1",           // Unique identifier
-  "type": "rect",       // Shape type
-  "label": "My Node",   // Display text
-  "x": 100,             // X position
-  "y": 100,             // Y position
-  "width": 120,         // Width in pixels
-  "height": 44,         // Height in pixels
-  "color": "#7aa2f7",   // Optional: fill color (Tokyo Night blue)
-  "outlineColor": "#414868" // Optional: border color
-}
-```
-
-```
-
-### Connection Properties
-
-```json
-{
-  "id": "c1",           // Unique identifier
-  "from": "n1",         // Source node ID
-  "to": "n2",           // Target node ID
-  "label": "yes",       // Optional: label text
-  "lineStyle": "solid", // Optional: "solid" or "dashed"
-  "color": "#7aa2f7"    // Optional: line color
-}
-```
-
-### Sequence Diagram Nodes
-
-For sequence diagrams, add these properties:
-
-```json
-{
-  "id": "n1",
-  "type": "rect",
-  "label": "Alice",
-  "isParticipant": true,
-  "hasLifeline": true
-}
-```
-
-Sequence connections:
-```json
-{
-  "id": "c1",
-  "from": "n1",
-  "to": "n2",
-  "isSequenceMessage": true,
-  "messageY": 180,
-  "arrow": "->>"
-}
-```
-
-## Generate URL Without API
-
-You can create URLs client-side:
-
-```javascript
-const diagram = {
-  n: [
-    { id: "n1", type: "rect", label: "Hello", x: 100, y: 100, width: 120, height: 44 }
-  ],
-  c: []
-};
-
-const url = "https://siren.sanath.dev/#" + btoa(encodeURIComponent(JSON.stringify(diagram)));
-// User can open this URL to see and edit the diagram
-```
-
-## Mermaid Syntax Support
-
-The API supports standard Mermaid flowchart syntax:
+### 1. Flowchart (Default)
 
 ```
 flowchart TD
@@ -214,39 +35,265 @@ flowchart TD
   C -->|No| E[End]
 ```
 
-Arrow types:
-- `-->` Solid arrow
-- `---` Solid line (no arrow)
-- `-.->` Dashed arrow
-- `==>` Thick arrow
+Directions: `TD` (top-down), `LR` (left-right), `RL`, `BT`
 
-## Example Prompts for AI
+### 2. Sequence Diagram
 
-When users ask you to create diagrams, generate Mermaid code and call the API:
-
-**User:** "Create a flowchart for user login"
-
-**AI Response:**
 ```
-I'll create that diagram for you.
+sequenceDiagram
+  participant A as Alice
+  participant B as Bob
+  A->>B: Hello
+  B-->>A: Hi there
+  loop Every minute
+    A->>B: Ping
+  end
+  alt Success
+    B->>A: Pong
+  else Failure
+    B->>A: Error
+  end
+```
 
-[Call API with:]
+### 3. Class Diagram
+
+```
+classDiagram
+  class User {
+    +String name
+    +login()
+  }
+  class Admin {
+    +deleteUser()
+  }
+  User <|-- Admin
+```
+
+---
+
+## Node Types
+
+| Type | Mermaid Syntax | JSON `type` | Description |
+|------|----------------|-------------|-------------|
+| Rectangle | `A[Label]` | `rect` | Standard process node |
+| Pill | `A(Label)` | `pill` | Rounded rectangle |
+| Diamond | `A{Label}` | `diamond` | Decision/condition |
+| Circle | `A((Label))` | `circle` | Terminal/event |
+| Container | `A[["Label"]]` | `container` | **Group box** for organizing nodes |
+| Text | - | `text` | Free text annotation |
+| Arrow | - | `line` | Standalone arrow/line |
+
+### Container (Grouping)
+
+Use containers to visually group related nodes:
+
+```json
 {
-  "mermaid": "flowchart TD\n  A[User visits site] --> B{Logged in?}\n  B -->|Yes| C[Show dashboard]\n  B -->|No| D[Show login form]\n  D --> E[Enter credentials]\n  E --> F{Valid?}\n  F -->|Yes| C\n  F -->|No| G[Show error]\n  G --> D"
+  "nodes": [
+    {"id": "g1", "type": "container", "label": "Input Sources", "x": 50, "y": 50, "width": 400, "height": 120},
+    {"id": "n1", "type": "rect", "label": "PDF", "x": 70, "y": 90, "width": 100, "height": 44},
+    {"id": "n2", "type": "rect", "label": "HTML", "x": 190, "y": 90, "width": 100, "height": 44},
+    {"id": "n3", "type": "rect", "label": "Audio", "x": 310, "y": 90, "width": 100, "height": 44}
+  ]
 }
-
-Here's your diagram: [returned URL]
 ```
+
+Containers render as dashed-border boxes. Place them BEFORE the nodes they contain (lower z-index).
+
+---
+
+## Node Properties (JSON)
+
+```json
+{
+  "id": "n1",
+  "type": "rect",
+  "label": "My Node",
+  "x": 100,
+  "y": 100,
+  "width": 120,
+  "height": 44,
+  "color": "#7aa2f7",
+  "outlineColor": "#414868",
+  "fillStyle": "infill"
+}
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | string | Unique identifier (required) |
+| `type` | string | Node type (required) |
+| `label` | string | Display text |
+| `x`, `y` | number | Position in pixels |
+| `width`, `height` | number | Size in pixels |
+| `color` | hex | Fill color |
+| `outlineColor` | hex | Border color |
+| `fillStyle` | string | `outline`, `infill`, `stripe`, or `grid` |
+
+### Fill Styles
+
+- `outline` - Transparent fill, colored border only
+- `infill` - Solid color fill (default for most nodes)
+- `stripe` - Diagonal stripe pattern
+- `grid` - Dot grid pattern
+
+### Sequence Diagram Node Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `isParticipant` | boolean | Mark as sequence participant |
+| `hasLifeline` | boolean | Show vertical lifeline below node |
+
+---
+
+## Connection Properties (JSON)
+
+```json
+{
+  "id": "c1",
+  "from": "n1",
+  "to": "n2",
+  "label": "next",
+  "lineStyle": "solid",
+  "color": "#414868"
+}
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | string | Unique identifier |
+| `from` | string | Source node ID |
+| `to` | string | Target node ID |
+| `label` | string | Edge label text |
+| `lineStyle` | string | `solid` or `dashed` |
+| `color` | hex | Line color |
+
+### Sequence Diagram Connection Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `isSequenceMessage` | boolean | Render as horizontal message |
+| `messageY` | number | Y position of message line |
+| `arrow` | string | Arrow type: `->>`, `-->>`, `-)`, `--)` |
+| `index` | number | Message order (for vertical positioning) |
+
+---
+
+## Arrow Types (Mermaid)
+
+| Syntax | Description |
+|--------|-------------|
+| `-->` | Solid arrow |
+| `---` | Solid line (no arrow) |
+| `-.->` | Dashed arrow |
+| `==>` | Thick arrow |
+
+Sequence arrows:
+| Syntax | Description |
+|--------|-------------|
+| `->>` | Solid with filled head |
+| `-->>` | Dashed with filled head |
+| `-)` | Solid with open head (async) |
+| `--)` | Dashed with open head |
+
+---
+
+## Color Palette (Tokyo Night Storm)
+
+| Color | Hex |
+|-------|-----|
+| Blue | `#7aa2f7` |
+| Cyan | `#7dcfff` |
+| Green | `#9ece6a` |
+| Red | `#f7768e` |
+| Yellow | `#e0af68` |
+| Magenta | `#bb9af7` |
+| Orange | `#ff9e64` |
+| Border | `#414868` |
+| Background | `#24283b` |
+| Foreground | `#c0caf5` |
+
+---
+
+## API Endpoints
+
+### POST /api/diagram
+
+Create diagram, returns shareable URL.
+
+**Option 1: Mermaid code**
+```json
+{"mermaid": "flowchart TD\n  A --> B"}
+```
+
+**Option 2: JSON nodes/connections**
+```json
+{
+  "nodes": [...],
+  "connections": [...]
+}
+```
+
+### POST /api/diagram/image
+
+Export as PNG image.
+
+```bash
+curl -X POST https://siren.sanath.dev/api/diagram/image \
+  -H "Content-Type: application/json" \
+  -d '{"mermaid": "flowchart TD\n  A --> B"}' \
+  --output diagram.png
+```
+
+Options: `width` (default 1200), `height` (default 800), `scale` (default 2)
+
+---
+
+## Complex Example: RAG Pipeline with Groups
+
+```json
+{
+  "nodes": [
+    {"id": "g1", "type": "container", "label": "Input Sources", "x": 50, "y": 30, "width": 520, "height": 100},
+    {"id": "i1", "type": "rect", "label": "PDF/DOCX", "x": 70, "y": 60, "width": 110, "height": 44, "color": "#9ece6a"},
+    {"id": "i2", "type": "rect", "label": "HTML/Images", "x": 200, "y": 60, "width": 110, "height": 44},
+    {"id": "i3", "type": "rect", "label": "Audio/OCR", "x": 330, "y": 60, "width": 110, "height": 44},
+    {"id": "i4", "type": "rect", "label": "User Query", "x": 460, "y": 60, "width": 100, "height": 44},
+    
+    {"id": "g2", "type": "container", "label": "Retrieval", "x": 50, "y": 280, "width": 400, "height": 100},
+    {"id": "r1", "type": "rect", "label": "Vector Search", "x": 70, "y": 310, "width": 110, "height": 44},
+    {"id": "r2", "type": "rect", "label": "BM25", "x": 200, "y": 310, "width": 110, "height": 44},
+    {"id": "r3", "type": "rect", "label": "Query Rewrite", "x": 330, "y": 310, "width": 100, "height": 44},
+    
+    {"id": "p1", "type": "rect", "label": "Docling", "x": 140, "y": 160, "width": 120, "height": 44},
+    {"id": "p2", "type": "rect", "label": "OpenSearch", "x": 300, "y": 160, "width": 120, "height": 44},
+    {"id": "rr", "type": "rect", "label": "Re-ranking", "x": 200, "y": 420, "width": 120, "height": 44},
+    {"id": "llm", "type": "rect", "label": "LLM Generation", "x": 200, "y": 500, "width": 120, "height": 44},
+    {"id": "out", "type": "rect", "label": "Response", "x": 200, "y": 580, "width": 120, "height": 44}
+  ],
+  "connections": [
+    {"id": "c1", "from": "i1", "to": "p1"},
+    {"id": "c2", "from": "i2", "to": "p1"},
+    {"id": "c3", "from": "i3", "to": "p2"},
+    {"id": "c4", "from": "i4", "to": "p2"},
+    {"id": "c5", "from": "p1", "to": "r1"},
+    {"id": "c6", "from": "p1", "to": "r2"},
+    {"id": "c7", "from": "p2", "to": "r2"},
+    {"id": "c8", "from": "p2", "to": "r3"},
+    {"id": "c9", "from": "r1", "to": "rr"},
+    {"id": "c10", "from": "r2", "to": "rr"},
+    {"id": "c11", "from": "r3", "to": "rr"},
+    {"id": "c12", "from": "rr", "to": "llm"},
+    {"id": "c13", "from": "llm", "to": "out"}
+  ]
+}
+```
+
+---
 
 ## MCP Server
 
-For Claude Desktop integration, Siren provides an MCP server at:
-
-```
-https://siren.sanath.dev/mcp
-```
-
-Add to your Claude Desktop config:
+For Claude Desktop, add to config:
 
 ```json
 {
@@ -259,7 +306,13 @@ Add to your Claude Desktop config:
 }
 ```
 
-Available tools:
-- `create_diagram` - Create from Mermaid code
-- `create_diagram_json` - Create from JSON nodes/connections
-- `export_diagram_image` - Export as PNG
+Tools: `create_diagram`, `create_diagram_json`, `export_diagram_image`
+
+---
+
+## Tips
+
+1. **Containers first** - Define container nodes before the nodes they contain
+2. **Use JSON for complex layouts** - Mermaid is great for simple flows; JSON gives precise positioning
+3. **Share short URLs** - Always use the `url` field, not `editUrl`
+4. **Consistent spacing** - Use multiples of 20px for grid alignment
