@@ -445,6 +445,10 @@
       tempLine.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
       tempLine.style.display = 'block';
     }
+    function hideTempLine() {
+      tempLine.style.display = 'none';
+      tempPath.setAttribute('d', '');
+    }
     const zoomLevel = document.getElementById('zoomLevel');
     const gridBg = document.getElementById('gridBg');
     const drawPreview = document.getElementById('drawPreview');
@@ -1930,7 +1934,7 @@
           tempPath.setAttribute('d', `M${x1},${y1} L${x2},${y2} M${x2},${y2} L${baseX + px},${baseY + py} M${x2},${y2} L${baseX - px},${baseY - py}`);
           showTempLine();
         } else {
-          tempLine.style.display = 'none';
+          hideTempLine();
           const x = Math.min(drawing.startX, pos.x);
           const y = Math.min(drawing.startY, pos.y);
           const w = Math.abs(pos.x - drawing.startX);
@@ -2062,7 +2066,7 @@
           }
           
           drawing = null;
-          tempLine.style.display = 'none';
+          hideTempLine();
           setTool('select');
         } else {
           const x = Math.min(drawing.startX, pos.x);
@@ -2184,7 +2188,7 @@
         }
         
         connecting = null;
-        tempLine.style.display = 'none';
+        hideTempLine();
         if (currentTool === 'select') canvas.classList.remove('show-connectors');
       }
       
