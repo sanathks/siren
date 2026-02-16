@@ -368,12 +368,6 @@ Error response format:
 
 ---
 
-## Rate Limits
-
-Currently no rate limits. Please be reasonable with automated requests.
-
----
-
 ## See Also
 
 - [LLM Integration](llm-integration.md) - AI/LLM-specific usage
