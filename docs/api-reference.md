@@ -357,6 +357,7 @@ The API returns standard HTTP status codes:
 |------|-------------|
 | 200 | Success |
 | 400 | Bad request (invalid JSON or missing required fields) |
+| 429 | Rate limit exceeded |
 | 500 | Server error |
 
 Error response format:
@@ -365,6 +366,28 @@ Error response format:
   "error": "Description of what went wrong"
 }
 ```
+
+---
+
+## Rate Limits
+
+API requests are rate limited to **30 requests per minute per IP** using a sliding window.
+
+When exceeded, you'll receive a `429` response:
+```json
+{
+  "error": "Rate limit exceeded. Please try again later.",
+  "retryAfter": 21
+}
+```
+
+**Response headers:**
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Limit` | Maximum requests per window |
+| `X-RateLimit-Remaining` | Requests remaining in current window |
+| `X-RateLimit-Reset` | Unix timestamp when the limit resets |
+| `Retry-After` | Seconds to wait before retrying |
 
 ---
 

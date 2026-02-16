@@ -130,14 +130,18 @@ The schema may evolve. Fetch `/llm.txt` before generating diagrams to ensure acc
 
 Always share the `url` field from the API response, not `editUrl`. The short URL is cleaner and redirects properly.
 
-### 3. Position Nodes Thoughtfully
+### 3. Respect Rate Limits
+
+The API allows 30 requests per minute per IP. If you get a `429` response, wait for `retryAfter` seconds before retrying.
+
+### 4. Position Nodes Thoughtfully
 
 - Use consistent spacing (multiples of 20px work well with grid)
 - Vertical flows: ~100px between rows
 - Horizontal flows: ~180px between columns
 - Leave room for labels
 
-### 4. Color with Purpose
+### 5. Color with Purpose
 
 - **Green** (`#9ece6a`) - Start states, success
 - **Red** (`#f7768e`) - Errors, end states, danger
@@ -145,15 +149,15 @@ Always share the `url` field from the API response, not `editUrl`. The short URL
 - **Blue** (`#7aa2f7`) - Primary nodes, process steps
 - **Magenta** (`#bb9af7`) - Special/highlighted nodes
 
-### 5. Containers Go First
+### 6. Containers Go First
 
 When using containers (group boxes), define them before the nodes they contain. This ensures proper render order.
 
-### 6. Don't Use "transparent"
+### 7. Don't Use "transparent"
 
 For outline-only nodes, omit the `color` property entirely. Never set `color: "transparent"`.
 
-### 7. Match Node Sizes to Content
+### 8. Match Node Sizes to Content
 
 - Short labels (1-2 words): Default sizes work fine
 - Long labels: Increase width to prevent overflow
