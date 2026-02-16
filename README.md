@@ -137,16 +137,16 @@ Add to Claude Desktop config:
 
 ## Documentation
 
-Full documentation available in the [docs](docs/) folder:
+Full documentation available at **[draph.sanath.dev/docs](https://draph.sanath.dev/docs)**
 
-- [Getting Started](docs/getting-started.md)
-- [Nodes and Shapes](docs/nodes-and-shapes.md)
-- [Connections](docs/connections.md)
-- [Keyboard Shortcuts](docs/keyboard-shortcuts.md)
-- [Mermaid Import](docs/mermaid.md)
-- [API Reference](docs/api-reference.md)
-- [LLM Integration](docs/llm-integration.md)
-- [Examples](docs/examples.md)
+- [Getting Started](https://draph.sanath.dev/docs/getting-started/)
+- [Nodes and Shapes](https://draph.sanath.dev/docs/nodes-and-shapes/)
+- [Connections](https://draph.sanath.dev/docs/connections/)
+- [Keyboard Shortcuts](https://draph.sanath.dev/docs/keyboard-shortcuts/)
+- [Mermaid Import](https://draph.sanath.dev/docs/mermaid/)
+- [API Reference](https://draph.sanath.dev/docs/api-reference/)
+- [LLM Integration](https://draph.sanath.dev/docs/llm-integration/)
+- [Examples](https://draph.sanath.dev/docs/examples/)
 
 ## License
 
