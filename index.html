@@ -3073,7 +3073,7 @@
       const result = { nodes: [], connections: [], errors: [], diagramType: 'flowchart' };
       const nodeMap = {};
       
-      // Helper to parse a node token like "A", "A[Label]", "A{Label}", "A((Label))", "A(Label)"
+      // Helper to parse a node token like "A", "A[Label]", "A{Label}", "A((Label))", "A(Label)", "A[(DB)]"
       function parseNodeToken(token) {
         token = token.trim();
         
@@ -3085,7 +3085,23 @@
         m = token.match(/^(\w+)\[\["?(.+?)"?\]\]$/);
         if (m) return { id: m[1], type: 'container', label: m[2] };
         
-        // A[rect]
+        // A[(database)]
+        m = token.match(/^(\w+)\[\((.+)\)\]$/);
+        if (m) return { id: m[1], type: 'circle', label: m[2] };
+        
+        // A{{hexagon}}
+        m = token.match(/^(\w+)\{\{(.+)\}\}$/);
+        if (m) return { id: m[1], type: 'diamond', label: m[2] };
+        
+        // A[/parallelogram/]
+        m = token.match(/^(\w+)\[\/(.+)\/\]$/);
+        if (m) return { id: m[1], type: 'rect', label: m[2] };
+        
+        // A[\parallelogram\]
+        m = token.match(/^(\w+)\[\\(.+)\\\]$/);
+        if (m) return { id: m[1], type: 'rect', label: m[2] };
+        
+        // A[rect] 
         m = token.match(/^(\w+)\[(.+)\]$/);
         if (m) return { id: m[1], type: 'rect', label: m[2] };
         
@@ -3097,6 +3113,10 @@
         m = token.match(/^(\w+)\((.+)\)$/);
         if (m) return { id: m[1], type: 'pill', label: m[2] };
         
+        // A>asymmetric]
+        m = token.match(/^(\w+)>(.+)\]$/);
+        if (m) return { id: m[1], type: 'rect', label: m[2] };
+        
         // Just ID
         m = token.match(/^(\w+)$/);
         if (m) return { id: m[1], type: 'rect', label: m[1] };
@@ -3104,9 +3124,91 @@
         return null;
       }
       
-      // Skip flowchart directive
+      // Register a node (only update if new info)
+      function registerNode(parsed) {
+        if (!parsed) return;
+        if (!nodeMap[parsed.id] || nodeMap[parsed.id].label === parsed.id) {
+          nodeMap[parsed.id] = parsed;
+        }
+      }
+      
+      // Arrow pattern: matches -->, --->, ----, -.-, -..-, -.->,-.->, ==>, ===>, -- text -->, -. text .->  etc
+      const arrowRe = /\s*(={2,}>|--+>|--+|-%2D+>|-\.+->{0,1}|-\.->{0,1}|~~+>|~~+)\s*/;
+      
+      // Split "A & B & C" into individual node tokens
+      function splitAmpersand(str) {
+        return str.split(/\s*&\s*/).map(s => s.trim()).filter(Boolean);
+      }
+      
+      // Parse a chain of connections from a single line
+      // e.g. "A --> B --> C" or "A & B -->|label| C & D"
+      function parseConnectionLine(line) {
+        // Tokenize: split by arrows, keeping arrows as separators
+        // We need to handle |label| that comes right after an arrow
+        const tokens = [];
+        let remaining = line;
+        
+        while (remaining.length > 0) {
+          // Try to find the next arrow
+          const arrowMatch = remaining.match(arrowRe);
+          if (!arrowMatch) {
+            // No more arrows - rest is a node token
+            tokens.push({ type: 'node', text: remaining.trim() });
+            break;
+          }
+          
+          const beforeArrow = remaining.substring(0, arrowMatch.index).trim();
+          if (beforeArrow) {
+            tokens.push({ type: 'node', text: beforeArrow });
+          }
+          
+          let arrow = arrowMatch[1];
+          remaining = remaining.substring(arrowMatch.index + arrowMatch[0].length);
+          
+          // Check for |label| right after arrow
+          let label = '';
+          const labelMatch = remaining.match(/^\|([^|]*)\|\s*/);
+          if (labelMatch) {
+            label = labelMatch[1];
+            remaining = remaining.substring(labelMatch[0].length);
+          }
+          
+          tokens.push({ type: 'arrow', arrow, label });
+        }
+        
+        // Now process tokens: node, arrow, node, arrow, node...
+        for (let t = 0; t < tokens.length; t++) {
+          if (tokens[t].type === 'arrow' && t > 0 && t < tokens.length - 1) {
+            const fromTokens = splitAmpersand(tokens[t - 1].text);
+            const toTokens = splitAmpersand(tokens[t + 1].text);
+            const label = tokens[t].label || '';
+            
+            for (const ft of fromTokens) {
+              const fromNode = parseNodeToken(ft);
+              if (fromNode) registerNode(fromNode);
+              
+              for (const tt of toTokens) {
+                const toNode = parseNodeToken(tt);
+                if (toNode) registerNode(toNode);
+                
+                if (fromNode && toNode) {
+                  result.connections.push({
+                    from: fromNode.id,
+                    to: toNode.id,
+                    label
+                  });
+                }
+              }
+            }
+          }
+        }
+        
+        return tokens.some(t => t.type === 'arrow');
+      }
+      
+      // Skip flowchart/graph directive
       let startIdx = 0;
-      if (lines[0]?.match(/^flowchart\s+(TD|TB|LR|RL|BT)/i)) {
+      if (lines[0]?.match(/^(flowchart|graph)\s+(TD|TB|LR|RL|BT)/i)) {
         startIdx = 1;
       }
       
@@ -3114,43 +3216,19 @@
       for (let i = startIdx; i < lines.length; i++) {
         const line = lines[i];
         
-        // Skip subgraph, style, class
-        if (line.startsWith('subgraph') || line === 'end' || 
-            line.startsWith('style') || line.startsWith('class')) continue;
+        // Skip subgraph, style, class, linkStyle, click
+        if (line.match(/^subgraph\s/) || line === 'end' || 
+            line.startsWith('style ') || line.startsWith('class ') ||
+            line.startsWith('linkStyle ') || line.startsWith('click ')) continue;
         
-        // Connection pattern: NodeA --> NodeB or NodeA -->|label| NodeB
-        // Where NodeA/NodeB can be "A" or "A[Label]" or "A{Label}" etc
-        const connMatch = line.match(/^(.+?)\s*(-->|---|-\.-|==>)\s*(\|([^|]*)\|)?\s*(.+)$/);
-        if (connMatch) {
-          const fromToken = connMatch[1].trim();
-          const toToken = connMatch[5].trim();
-          const label = connMatch[4] || '';
-          
-          const fromNode = parseNodeToken(fromToken);
-          const toNode = parseNodeToken(toToken);
-          
-          if (fromNode && toNode) {
-            // Register nodes if new or update if has more info
-            if (!nodeMap[fromNode.id] || nodeMap[fromNode.id].label === fromNode.id) {
-              nodeMap[fromNode.id] = fromNode;
-            }
-            if (!nodeMap[toNode.id] || nodeMap[toNode.id].label === toNode.id) {
-              nodeMap[toNode.id] = toNode;
-            }
-            
-            result.connections.push({
-              from: fromNode.id,
-              to: toNode.id,
-              label: label
-            });
-          }
-          continue;
-        }
+        // Try parsing as connection line (handles chains and & operator)
+        if (parseConnectionLine(line)) continue;
         
-        // Standalone node definition
-        const node = parseNodeToken(line);
-        if (node) {
-          nodeMap[node.id] = node;
+        // Standalone node definition (possibly & separated)
+        const parts = splitAmpersand(line);
+        for (const part of parts) {
+          const node = parseNodeToken(part);
+          if (node) registerNode(node);
         }
       }
       
