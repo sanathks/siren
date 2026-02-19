@@ -3630,7 +3630,6 @@
         
         // Create nodes with layout (pass connections for graph-aware positioning)
         const layouted = layoutNodes(parsed.nodes, parsed.diagramType, parsed.subgraphs, parsed.connections);
-        console.log('[IMPORT DEBUG] layouted:', JSON.stringify(layouted.map(n => ({id:n.id,x:n.x,y:n.y}))));
         const idMap = {};
         const isSequence = parsed.diagramType === 'sequence';
         
@@ -3654,10 +3653,7 @@
           }
           
           const nodeType = isParticipant ? 'rect' : (isClass ? 'rect' : n.type);
-          console.log('[IMPORT DEBUG] createNode', n.id, 'type:', nodeType, 'at:', n.x, n.y);
           const node = createNode(nodeType, n.x, n.y, width, height);
-          console.log('[IMPORT DEBUG] created', n.id, '->', node.id, 'actual pos:', node.x, node.y);
-          node.label = n.label;
           
           // Store class properties/methods
           if (isClass) {
@@ -3763,10 +3759,19 @@
           });
         }
         
-        // Ensure nodes are fully created before arranging
+        // Layout already applied by layoutNodes - just save and render
         saveState();
         render();
-        arrangeDiagram();
+        
+        // Center view on content
+        const bounds = getContentBounds();
+        if (bounds) {
+          const contentWidth = bounds.maxX - bounds.minX;
+          const contentHeight = bounds.maxY - bounds.minY;
+          viewBox.x = bounds.minX - (viewBox.w - contentWidth) / 2;
+          viewBox.y = bounds.minY - (viewBox.h - contentHeight) / 2;
+          updateViewBox();
+        }
         
       } catch (e) {
         errorDiv.textContent = 'Parse error: ' + e.message;
