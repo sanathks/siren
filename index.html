@@ -3673,36 +3673,28 @@
           idMap[n.id] = node.id;
         });
         
-        // Create container nodes for subgraphs using pre-computed layout positions
+        // Create container nodes for subgraphs by computing bounding box of actual placed children
         if (parsed.subgraphs && parsed.subgraphs.length > 0) {
-          const padding = 20;
-          const headerHeight = 30;
+          const padding = 25;
+          const headerHeight = 35;
           
           parsed.subgraphs.forEach(sg => {
-            // Find child nodes that were created
+            // Find child nodes that were created (already in global nodes array)
             const childNodeIds = sg.children.map(cid => idMap[cid]).filter(Boolean);
             const childNodes = childNodeIds.map(cid => nodes.find(n => n.id === cid)).filter(Boolean);
             
             if (childNodes.length === 0) return;
             
-            // Use pre-computed container position from layout if available
-            let containerX, containerY, containerW, containerH;
-            if (sg._containerX !== undefined) {
-              containerX = sg._containerX;
-              containerY = sg._containerY;
-              containerW = sg._containerW;
-              containerH = sg._containerH;
-            } else {
-              // Fallback: calculate bounding box of children
-              const minX = Math.min(...childNodes.map(n => n.x));
-              const minY = Math.min(...childNodes.map(n => n.y));
-              const maxX = Math.max(...childNodes.map(n => n.x + n.width));
-              const maxY = Math.max(...childNodes.map(n => n.y + n.height));
-              containerX = minX - padding;
-              containerY = minY - padding - headerHeight;
-              containerW = (maxX - minX) + padding * 2;
-              containerH = (maxY - minY) + padding * 2 + headerHeight;
-            }
+            // Calculate bounding box from actual placed child positions
+            const minX = Math.min(...childNodes.map(n => n.x));
+            const minY = Math.min(...childNodes.map(n => n.y));
+            const maxX = Math.max(...childNodes.map(n => n.x + n.width));
+            const maxY = Math.max(...childNodes.map(n => n.y + n.height));
+            
+            const containerX = minX - padding;
+            const containerY = minY - padding - headerHeight;
+            const containerW = (maxX - minX) + padding * 2;
+            const containerH = (maxY - minY) + padding * 2 + headerHeight;
             
             const container = createNode('container', containerX, containerY, containerW, containerH);
             container.label = sg.label;
