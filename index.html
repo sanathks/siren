@@ -3283,7 +3283,7 @@
       return result;
     }
     
-    function layoutNodes(parsedNodes, diagramType, subgraphs) {
+    function layoutNodes(parsedNodes, diagramType, subgraphs, parsedConnections) {
       const startX = 100;
       const startY = 100;
       
@@ -3307,66 +3307,245 @@
         }));
       }
       
-      // Flowchart with subgraphs: group nodes by subgraph
-      if (subgraphs && subgraphs.length > 0) {
-        const result = [];
-        const positioned = new Set();
-        const nodeSpacingX = 150;
-        const nodeSpacingY = 70;
-        const groupSpacingX = 40;
-        const groupHeaderH = 40;
-        const groupPadding = 25;
-        
-        // Layout subgraphs in a grid
-        const sgCols = Math.min(3, Math.ceil(Math.sqrt(subgraphs.length)));
-        let groupX = startX;
-        let groupY = startY;
-        let rowMaxH = 0;
-        
-        subgraphs.forEach((sg, sgIdx) => {
-          const children = parsedNodes.filter(n => sg.children.includes(n.id));
-          if (children.length === 0) return;
-          
-          const childCols = Math.min(3, Math.ceil(Math.sqrt(children.length)));
-          const innerX = groupX + groupPadding;
-          const innerY = groupY + groupPadding + groupHeaderH;
-          
-          children.forEach((n, ci) => {
-            const col = ci % childCols;
-            const row = Math.floor(ci / childCols);
-            result.push({
-              ...n,
-              x: innerX + col * nodeSpacingX,
-              y: innerY + row * nodeSpacingY
-            });
-            positioned.add(n.id);
+      // === Sugiyama-style layered layout for flowcharts ===
+      const conns = parsedConnections || [];
+      const nodeById = {};
+      parsedNodes.forEach(n => { nodeById[n.id] = n; });
+      
+      // Build adjacency lists
+      const children = {};  // outgoing
+      const parents = {};   // incoming
+      parsedNodes.forEach(n => { children[n.id] = []; parents[n.id] = []; });
+      conns.forEach(c => {
+        if (nodeById[c.from] && nodeById[c.to]) {
+          children[c.from].push(c.to);
+          parents[c.to].push(c.from);
+        }
+      });
+      
+      // Build subgraph membership map
+      const nodeToSubgraph = {};
+      const sgById = {};
+      if (subgraphs) {
+        subgraphs.forEach(sg => {
+          sgById[sg.id] = sg;
+          sg.children.forEach(cid => { nodeToSubgraph[cid] = sg.id; });
+        });
+      }
+      
+      // --- Step 1: Layer assignment (longest path from sources) ---
+      const layer = {};
+      const visited = {};
+      
+      function assignLayer(id) {
+        if (visited[id]) return layer[id];
+        visited[id] = true;
+        const pars = parents[id] || [];
+        if (pars.length === 0) {
+          layer[id] = 0;
+        } else {
+          let maxParentLayer = 0;
+          pars.forEach(p => {
+            if (nodeById[p]) {
+              maxParentLayer = Math.max(maxParentLayer, assignLayer(p) + 1);
+            }
           });
-          
-          const childRows = Math.ceil(children.length / childCols);
-          const groupW = childCols * nodeSpacingX + groupPadding * 2;
-          const groupH = childRows * nodeSpacingY + groupPadding * 2 + groupHeaderH;
-          rowMaxH = Math.max(rowMaxH, groupH);
-          
-          // Next subgraph position
-          if ((sgIdx + 1) % sgCols === 0) {
-            groupX = startX;
-            groupY += rowMaxH + groupSpacingX;
-            rowMaxH = 0;
-          } else {
-            groupX += groupW + groupSpacingX;
-          }
+          layer[id] = maxParentLayer;
+        }
+        return layer[id];
+      }
+      
+      // Handle cycles: if not visited after first pass, assign layer 0
+      parsedNodes.forEach(n => assignLayer(n.id));
+      
+      // Group nodes by layer
+      const layers = {};
+      let maxLayer = 0;
+      parsedNodes.forEach(n => {
+        const l = layer[n.id] || 0;
+        if (!layers[l]) layers[l] = [];
+        layers[l].push(n.id);
+        maxLayer = Math.max(maxLayer, l);
+      });
+      
+      // --- Step 2: Ordering within layers (barycenter method) ---
+      // Build position index for each layer
+      function getOrder(layerArr) {
+        const pos = {};
+        layerArr.forEach((id, i) => { pos[id] = i; });
+        return pos;
+      }
+      
+      // Run multiple sweeps of barycenter ordering
+      for (let sweep = 0; sweep < 4; sweep++) {
+        // Forward sweep (top to bottom)
+        for (let l = 1; l <= maxLayer; l++) {
+          if (!layers[l]) continue;
+          const prevPos = getOrder(layers[l - 1] || []);
+          layers[l].sort((a, b) => {
+            const aPars = (parents[a] || []).filter(p => prevPos[p] !== undefined);
+            const bPars = (parents[b] || []).filter(p => prevPos[p] !== undefined);
+            const aBarycenter = aPars.length > 0 ? aPars.reduce((s, p) => s + prevPos[p], 0) / aPars.length : Infinity;
+            const bBarycenter = bPars.length > 0 ? bPars.reduce((s, p) => s + prevPos[p], 0) / bPars.length : Infinity;
+            return aBarycenter - bBarycenter;
+          });
+        }
+        // Backward sweep (bottom to top)
+        for (let l = maxLayer - 1; l >= 0; l--) {
+          if (!layers[l]) continue;
+          const nextPos = getOrder(layers[l + 1] || []);
+          layers[l].sort((a, b) => {
+            const aKids = (children[a] || []).filter(c => nextPos[c] !== undefined);
+            const bKids = (children[b] || []).filter(c => nextPos[c] !== undefined);
+            const aBarycenter = aKids.length > 0 ? aKids.reduce((s, c) => s + nextPos[c], 0) / aKids.length : Infinity;
+            const bBarycenter = bKids.length > 0 ? bKids.reduce((s, c) => s + nextPos[c], 0) / bKids.length : Infinity;
+            return aBarycenter - bBarycenter;
+          });
+        }
+      }
+      
+      // --- Step 3: Coordinate assignment with subgraph awareness ---
+      const nodeWidth = 140;
+      const nodeHeight = 44;
+      const spacingX = 170;
+      const spacingY = 80;
+      const containerPadX = 25;
+      const containerPadY = 25;
+      const containerHeaderH = 35;
+      const containerGap = 40;
+      
+      // Assign raw coordinates based on layer and position
+      const pos = {};
+      for (let l = 0; l <= maxLayer; l++) {
+        if (!layers[l]) continue;
+        layers[l].forEach((id, idx) => {
+          pos[id] = { x: startX + idx * spacingX, y: startY + l * spacingY };
+        });
+      }
+      
+      // If we have subgraphs, do a two-pass layout:
+      // 1. Layout children within each subgraph relative to each other
+      // 2. Position subgraphs based on their aggregate layer
+      if (subgraphs && subgraphs.length > 0) {
+        // Determine aggregate layer for each subgraph (min layer of children)
+        const sgInfo = [];
+        subgraphs.forEach(sg => {
+          const childLayers = sg.children.filter(c => layer[c] !== undefined).map(c => layer[c]);
+          const minLayer = childLayers.length > 0 ? Math.min(...childLayers) : 0;
+          const maxChildLayer = childLayers.length > 0 ? Math.max(...childLayers) : 0;
+          sgInfo.push({ ...sg, minLayer, maxChildLayer, childLayers });
         });
         
-        // Position ungrouped nodes below
+        // Sort subgraphs by their min layer (top subgraphs first)
+        sgInfo.sort((a, b) => a.minLayer - b.minLayer);
+        
+        // Group subgraphs by their layer band (subgraphs at same level go side by side)
+        const sgRows = [];
+        let currentRow = [];
+        let currentMinLayer = -1;
+        sgInfo.forEach(sg => {
+          if (currentMinLayer === -1 || sg.minLayer <= (currentRow.length > 0 ? currentRow[currentRow.length - 1].maxChildLayer : -1)) {
+            // Overlapping layer range or same band - try to keep side by side if not overlapping
+          }
+          // Simple: group subgraphs that start at similar layers
+          if (currentRow.length === 0 || Math.abs(sg.minLayer - currentRow[0].minLayer) <= 1) {
+            currentRow.push(sg);
+          } else {
+            sgRows.push(currentRow);
+            currentRow = [sg];
+          }
+        });
+        if (currentRow.length > 0) sgRows.push(currentRow);
+        
+        // Layout each subgraph's children internally, then position subgraphs
+        const result = [];
+        const positioned = new Set();
+        let globalY = startY;
+        
+        sgRows.forEach(row => {
+          let rowX = startX;
+          let rowMaxH = 0;
+          
+          row.forEach(sg => {
+            const sgChildren = sg.children.filter(c => nodeById[c]).map(c => nodeById[c]);
+            if (sgChildren.length === 0) return;
+            
+            // Layout children within subgraph using their relative layers
+            const localMinLayer = Math.min(...sgChildren.map(c => layer[c.id] || 0));
+            const localLayers = {};
+            sgChildren.forEach(c => {
+              const ll = (layer[c.id] || 0) - localMinLayer;
+              if (!localLayers[ll]) localLayers[ll] = [];
+              localLayers[ll].push(c);
+            });
+            
+            // Apply barycenter within the subgraph's local layers
+            const localMaxLayer = Math.max(...Object.keys(localLayers).map(Number));
+            for (let ll = 0; ll <= localMaxLayer; ll++) {
+              if (!localLayers[ll]) localLayers[ll] = [];
+            }
+            
+            // Calculate subgraph internal dimensions
+            let maxColsInSg = 0;
+            let totalRows = 0;
+            for (let ll = 0; ll <= localMaxLayer; ll++) {
+              maxColsInSg = Math.max(maxColsInSg, (localLayers[ll] || []).length);
+              if (localLayers[ll] && localLayers[ll].length > 0) totalRows++;
+            }
+            
+            const innerW = maxColsInSg * spacingX;
+            const innerH = (localMaxLayer + 1) * spacingY;
+            
+            // Position children
+            for (let ll = 0; ll <= localMaxLayer; ll++) {
+              const layerNodes = localLayers[ll] || [];
+              // Center nodes in this layer within the subgraph width
+              const layerWidth = layerNodes.length * spacingX;
+              const offsetX = (innerW - layerWidth) / 2;
+              
+              layerNodes.forEach((n, idx) => {
+                result.push({
+                  ...n,
+                  x: rowX + containerPadX + offsetX + idx * spacingX,
+                  y: globalY + containerPadY + containerHeaderH + ll * spacingY
+                });
+                positioned.add(n.id);
+              });
+            }
+            
+            // Store container info for later creation
+            const containerW = Math.max(innerW, spacingX) + containerPadX * 2;
+            const containerH = innerH + containerPadY * 2 + containerHeaderH;
+            sg._containerX = rowX;
+            sg._containerY = globalY;
+            sg._containerW = containerW;
+            sg._containerH = containerH;
+            
+            rowMaxH = Math.max(rowMaxH, containerH);
+            rowX += containerW + containerGap;
+          });
+          
+          globalY += rowMaxH + containerGap;
+        });
+        
+        // Position ungrouped nodes below all subgraphs
         const ungrouped = parsedNodes.filter(n => !positioned.has(n.id));
         if (ungrouped.length > 0) {
-          const maxY = result.length > 0 ? Math.max(...result.map(n => n.y)) + 100 : startY;
-          const cols = Math.ceil(Math.sqrt(ungrouped.length));
-          ungrouped.forEach((n, i) => {
-            result.push({
-              ...n,
-              x: startX + (i % cols) * nodeSpacingX,
-              y: maxY + Math.floor(i / cols) * nodeSpacingY
+          // Use their layer info to position relative to each other
+          const ugLayers = {};
+          ungrouped.forEach(n => {
+            const l = layer[n.id] || 0;
+            if (!ugLayers[l]) ugLayers[l] = [];
+            ugLayers[l].push(n);
+          });
+          const ugMinLayer = Math.min(...Object.keys(ugLayers).map(Number));
+          Object.keys(ugLayers).forEach(l => {
+            ugLayers[l].forEach((n, idx) => {
+              result.push({
+                ...n,
+                x: startX + idx * spacingX,
+                y: globalY + (l - ugMinLayer) * spacingY
+              });
             });
           });
         }
@@ -3374,12 +3553,11 @@
         return result;
       }
       
-      // Default: grid layout
-      const cols = Math.ceil(Math.sqrt(parsedNodes.length));
-      return parsedNodes.map((n, i) => ({
+      // No subgraphs: just use computed positions
+      return parsedNodes.map(n => ({
         ...n,
-        x: startX + (i % cols) * 180,
-        y: startY + Math.floor(i / cols) * 120
+        x: pos[n.id]?.x || startX,
+        y: pos[n.id]?.y || startY
       }));
     }
     
@@ -3431,8 +3609,18 @@
         connections = [];
         sequenceFrames = [];
         
-        // Create nodes with layout
-        const layouted = layoutNodes(parsed.nodes, parsed.diagramType, parsed.subgraphs);
+        // Strip <br/> tags from labels
+        parsed.nodes.forEach(n => {
+          if (n.label) n.label = n.label.replace(/<br\s*\/?>/gi, ' ').trim();
+        });
+        if (parsed.subgraphs) {
+          parsed.subgraphs.forEach(sg => {
+            if (sg.label) sg.label = sg.label.replace(/<br\s*\/?>/gi, ' ').trim();
+          });
+        }
+        
+        // Create nodes with layout (pass connections for graph-aware positioning)
+        const layouted = layoutNodes(parsed.nodes, parsed.diagramType, parsed.subgraphs, parsed.connections);
         const idMap = {};
         const isSequence = parsed.diagramType === 'sequence';
         
@@ -3476,7 +3664,7 @@
           idMap[n.id] = node.id;
         });
         
-        // Create container nodes for subgraphs and position children inside
+        // Create container nodes for subgraphs using pre-computed layout positions
         if (parsed.subgraphs && parsed.subgraphs.length > 0) {
           const padding = 20;
           const headerHeight = 30;
@@ -3488,17 +3676,24 @@
             
             if (childNodes.length === 0) return;
             
-            // Calculate bounding box of children
-            const minX = Math.min(...childNodes.map(n => n.x));
-            const minY = Math.min(...childNodes.map(n => n.y));
-            const maxX = Math.max(...childNodes.map(n => n.x + n.width));
-            const maxY = Math.max(...childNodes.map(n => n.y + n.height));
-            
-            // Create container that wraps children
-            const containerX = minX - padding;
-            const containerY = minY - padding - headerHeight;
-            const containerW = (maxX - minX) + padding * 2;
-            const containerH = (maxY - minY) + padding * 2 + headerHeight;
+            // Use pre-computed container position from layout if available
+            let containerX, containerY, containerW, containerH;
+            if (sg._containerX !== undefined) {
+              containerX = sg._containerX;
+              containerY = sg._containerY;
+              containerW = sg._containerW;
+              containerH = sg._containerH;
+            } else {
+              // Fallback: calculate bounding box of children
+              const minX = Math.min(...childNodes.map(n => n.x));
+              const minY = Math.min(...childNodes.map(n => n.y));
+              const maxX = Math.max(...childNodes.map(n => n.x + n.width));
+              const maxY = Math.max(...childNodes.map(n => n.y + n.height));
+              containerX = minX - padding;
+              containerY = minY - padding - headerHeight;
+              containerW = (maxX - minX) + padding * 2;
+              containerH = (maxY - minY) + padding * 2 + headerHeight;
+            }
             
             const container = createNode('container', containerX, containerY, containerW, containerH);
             container.label = sg.label;
