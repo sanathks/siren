@@ -48,6 +48,9 @@
     .lifeline-connector:hover { opacity: 1 !important; }
     .connection { pointer-events: stroke; cursor: pointer; stroke-linecap: round; }
     .connection-group { cursor: pointer; }
+    @keyframes flowDash { to { stroke-dashoffset: -20; } }
+    .flow-active .connection-group path:not(.conn-hit) { stroke-dasharray: 8 4 !important; animation: flowDash 0.6s linear infinite; }
+    .flow-active .connection-group path.conn-hit { animation: none !important; }
     .conn-hit { pointer-events: stroke; cursor: pointer; }
     .connection-group:hover path.connection { stroke-width: 2.5 !important; }
     .connection-group.selected path.connection { stroke-width: 3; stroke: #7aa2f7 !important; }
@@ -166,6 +169,9 @@
           </div>
         </div>
         <!-- Grid toggle -->
+        <button class="tool-btn" id="flowTool" onclick="toggleFlow()" title="Animate Flow (F)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </button>
         <button class="tool-btn active" id="gridTool" onclick="toggleGrid()" title="Snap to Grid (8)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -603,6 +609,13 @@
     }
     
     // Grid toggle
+    let flowActive = false;
+    function toggleFlow() {
+      flowActive = !flowActive;
+      document.getElementById('canvasContainer').classList.toggle('flow-active', flowActive);
+      document.getElementById('flowTool').classList.toggle('active', flowActive);
+    }
+    
     function toggleGrid() {
       snapToGrid = !snapToGrid;
       document.getElementById('gridTool').classList.toggle('active', snapToGrid);
@@ -2480,6 +2493,7 @@
       if (e.key === '6') { setTool('line'); return; }
       if (e.key === '7') { toggleDropdown('lineDropdown'); return; }
       if (e.key === '8') { toggleGrid(); return; }
+      if (e.key === 'f' || e.key === 'F') { toggleFlow(); return; }
       if (e.key === '9') { toggleDropdown('exportDropdown'); return; }
       if (e.key === '0') { shareDiagram(); return; }
       if (e.key === 'a' && !e.ctrlKey && !e.metaKey) { arrangeDiagram(); return; }
