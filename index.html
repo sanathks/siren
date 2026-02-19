@@ -1128,7 +1128,7 @@
         // Label with background (no border, multi-line support)
         const label = conn.label || '';
         const isConnSelected = selectedConnId === conn.id;
-        const strokeColor = isConnSelected ? COLORS.accent : COLORS.fg;
+        const strokeColor = conn.color || (isConnSelected ? COLORS.accent : COLORS.fg);
         const strokeWidth = isConnSelected ? 2.5 : 1.5;
         
         let labelEl = '';
