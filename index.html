@@ -189,6 +189,7 @@
           <div class="dropdown-menu">
             <div class="dropdown-item" onclick="downloadPNG();closeDropdowns()">PNG</div>
             <div class="dropdown-item" onclick="downloadSVG();closeDropdowns()">SVG</div>
+            <div class="dropdown-item" onclick="downloadGIF();closeDropdowns()">GIF <span style="font-size:9px;color:#7aa2f7">animated</span></div>
           </div>
         </div>
         <!-- Share -->
@@ -2695,6 +2696,298 @@
       viewBox.h = rect.height * zoom;
       updateViewBox();
     });
+    
+    // ===== GIF EXPORT =====
+    // Minimal GIF89a encoder for animated GIF export (no dependencies)
+    function GifEncoder(width, height, delay) {
+      this.width = width;
+      this.height = height;
+      this.delay = delay; // in centiseconds (1/100th sec)
+      this.frames = [];
+    }
+    
+    GifEncoder.prototype.addFrame = function(imageData) {
+      // Quantize to 256 colors using median cut
+      const pixels = imageData.data;
+      const nPixels = this.width * this.height;
+      const palette = this._quantize(pixels, nPixels);
+      const indexed = this._mapPixels(pixels, nPixels, palette);
+      this.frames.push({ palette, indexed });
+    };
+    
+    GifEncoder.prototype._quantize = function(pixels, nPixels) {
+      // Simple popularity-based quantization (fast, good enough for diagrams)
+      const colorCounts = new Map();
+      for (let i = 0; i < nPixels; i++) {
+        const off = i * 4;
+        // Reduce to 5-bit per channel for counting
+        const r = pixels[off] >> 3;
+        const g = pixels[off+1] >> 3;
+        const b = pixels[off+2] >> 3;
+        const key = (r << 10) | (g << 5) | b;
+        colorCounts.set(key, (colorCounts.get(key) || 0) + 1);
+      }
+      
+      // Sort by frequency, take top 255 + reserve index 0 for transparency
+      const sorted = [...colorCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 256);
+      const palette = sorted.map(([key]) => [
+        (key >> 10 & 31) << 3,
+        (key >> 5 & 31) << 3,
+        (key & 31) << 3
+      ]);
+      // Pad to 256
+      while (palette.length < 256) palette.push([0, 0, 0]);
+      return palette;
+    };
+    
+    GifEncoder.prototype._mapPixels = function(pixels, nPixels, palette) {
+      const indexed = new Uint8Array(nPixels);
+      // Build lookup from reduced color
+      const lookup = new Map();
+      palette.forEach(([r, g, b], i) => {
+        lookup.set(((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3), i);
+      });
+      for (let i = 0; i < nPixels; i++) {
+        const off = i * 4;
+        const r = pixels[off] >> 3;
+        const g = pixels[off+1] >> 3;
+        const b = pixels[off+2] >> 3;
+        const key = (r << 10) | (g << 5) | b;
+        indexed[i] = lookup.has(key) ? lookup.get(key) : this._nearest(pixels[off], pixels[off+1], pixels[off+2], palette);
+      }
+      return indexed;
+    };
+    
+    GifEncoder.prototype._nearest = function(r, g, b, palette) {
+      let best = 0, bestDist = Infinity;
+      for (let i = 0; i < 256; i++) {
+        const dr = r - palette[i][0], dg = g - palette[i][1], db = b - palette[i][2];
+        const d = dr*dr + dg*dg + db*db;
+        if (d < bestDist) { bestDist = d; best = i; }
+      }
+      return best;
+    };
+    
+    GifEncoder.prototype.encode = function() {
+      const buf = [];
+      const w = this.width, h = this.height;
+      
+      // Use first frame's palette as global
+      const gpal = this.frames[0].palette;
+      
+      // Header
+      this._writeStr(buf, 'GIF89a');
+      // Logical Screen Descriptor
+      this._writeU16(buf, w);
+      this._writeU16(buf, h);
+      buf.push(0xF7); // GCT flag, 8-bit color, 256 colors (2^(7+1))
+      buf.push(0);    // bg color index
+      buf.push(0);    // pixel aspect ratio
+      // Global Color Table
+      for (let i = 0; i < 256; i++) {
+        buf.push(gpal[i][0], gpal[i][1], gpal[i][2]);
+      }
+      // Netscape Extension (loop forever)
+      buf.push(0x21, 0xFF, 0x0B);
+      this._writeStr(buf, 'NETSCAPE2.0');
+      buf.push(0x03, 0x01);
+      this._writeU16(buf, 0); // loop count 0 = infinite
+      buf.push(0x00);
+      
+      // Frames
+      for (const frame of this.frames) {
+        // Graphic Control Extension
+        buf.push(0x21, 0xF9, 0x04);
+        buf.push(0x00); // disposal: none, no transparency
+        this._writeU16(buf, this.delay);
+        buf.push(0x00); // transparent color index
+        buf.push(0x00);
+        
+        // Image Descriptor (use local color table if different from global)
+        buf.push(0x2C);
+        this._writeU16(buf, 0); // left
+        this._writeU16(buf, 0); // top
+        this._writeU16(buf, w);
+        this._writeU16(buf, h);
+        
+        // Check if we need local color table
+        const useLocal = frame.palette !== gpal;
+        if (useLocal) {
+          buf.push(0x87); // local color table, 256 colors
+          for (let i = 0; i < 256; i++) {
+            buf.push(frame.palette[i][0], frame.palette[i][1], frame.palette[i][2]);
+          }
+        } else {
+          buf.push(0x00); // no local color table
+        }
+        
+        // LZW compressed image data
+        const minCodeSize = 8;
+        buf.push(minCodeSize);
+        const lzw = this._lzwEncode(frame.indexed, minCodeSize);
+        // Write in sub-blocks (max 255 bytes each)
+        let offset = 0;
+        while (offset < lzw.length) {
+          const chunkSize = Math.min(255, lzw.length - offset);
+          buf.push(chunkSize);
+          for (let i = 0; i < chunkSize; i++) buf.push(lzw[offset + i]);
+          offset += chunkSize;
+        }
+        buf.push(0x00); // block terminator
+      }
+      
+      buf.push(0x3B); // trailer
+      return new Uint8Array(buf);
+    };
+    
+    GifEncoder.prototype._lzwEncode = function(indexed, minCodeSize) {
+      const clearCode = 1 << minCodeSize;
+      const eoiCode = clearCode + 1;
+      let codeSize = minCodeSize + 1;
+      let nextCode = eoiCode + 1;
+      const maxCode = 4096;
+      
+      // Build initial table
+      let table = new Map();
+      for (let i = 0; i < clearCode; i++) table.set(String(i), i);
+      
+      const output = [];
+      let bits = 0, bitCount = 0;
+      
+      const emit = (code) => {
+        bits |= (code << bitCount);
+        bitCount += codeSize;
+        while (bitCount >= 8) {
+          output.push(bits & 0xFF);
+          bits >>= 8;
+          bitCount -= 8;
+        }
+      };
+      
+      emit(clearCode);
+      
+      let current = String(indexed[0]);
+      for (let i = 1; i < indexed.length; i++) {
+        const next = current + ',' + indexed[i];
+        if (table.has(next)) {
+          current = next;
+        } else {
+          emit(table.get(current));
+          if (nextCode < maxCode) {
+            table.set(next, nextCode++);
+            if (nextCode > (1 << codeSize) && codeSize < 12) codeSize++;
+          } else {
+            emit(clearCode);
+            table = new Map();
+            for (let j = 0; j < clearCode; j++) table.set(String(j), j);
+            nextCode = eoiCode + 1;
+            codeSize = minCodeSize + 1;
+          }
+          current = String(indexed[i]);
+        }
+      }
+      emit(table.get(current));
+      emit(eoiCode);
+      if (bitCount > 0) output.push(bits & 0xFF);
+      return output;
+    };
+    
+    GifEncoder.prototype._writeStr = function(buf, str) {
+      for (let i = 0; i < str.length; i++) buf.push(str.charCodeAt(i));
+    };
+    
+    GifEncoder.prototype._writeU16 = function(buf, val) {
+      buf.push(val & 0xFF, (val >> 8) & 0xFF);
+    };
+    
+    // Download animated GIF of flow animation
+    async function downloadGIF() {
+      const bounds = getContentBounds();
+      if (!bounds) { alert('Nothing to export!'); return; }
+      
+      const padding = 40;
+      const cropX = bounds.minX - padding;
+      const cropY = bounds.minY - padding;
+      const cropW = (bounds.maxX - bounds.minX) + padding * 2;
+      const cropH = (bounds.maxY - bounds.minY) + padding * 2;
+      
+      // Cap dimensions for performance
+      const maxDim = 800;
+      const scale = Math.min(1, maxDim / Math.max(cropW, cropH));
+      const gifW = Math.round(cropW * scale);
+      const gifH = Math.round(cropH * scale);
+      
+      const numFrames = 10;
+      const frameDelay = 6; // centiseconds (60ms per frame)
+      const dashTotal = 12; // 8 + 4 from CSS animation
+      
+      // Show progress
+      const progress = document.createElement('div');
+      progress.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#24283b;border:1px solid #7aa2f7;border-radius:8px;padding:20px 32px;z-index:9999;color:#a9b1d6;font-family:system-ui;font-size:14px;text-align:center';
+      progress.innerHTML = 'Generating GIF...<br><span id="gifProgress" style="color:#7aa2f7">0%</span>';
+      document.body.appendChild(progress);
+      
+      const encoder = new GifEncoder(gifW, gifH, frameDelay);
+      
+      for (let frame = 0; frame < numFrames; frame++) {
+        const dashOffset = -((frame / numFrames) * dashTotal);
+        
+        // Clone SVG and add animation state
+        const clone = canvas.cloneNode(true);
+        clone.querySelectorAll('.connector, .resize-handle, #selectBox, #drawPreview, .lifeline-connector, .line-handle, .conn-hit').forEach(el => el.remove());
+        clone.querySelector('#gridBg')?.remove();
+        
+        // Apply dash animation to connection paths
+        clone.querySelectorAll('.connection-group path:not(.conn-hit)').forEach(path => {
+          path.style.strokeDasharray = '8 4';
+          path.style.strokeDashoffset = dashOffset;
+          path.style.animation = 'none';
+        });
+        
+        clone.setAttribute('viewBox', `${cropX} ${cropY} ${cropW} ${cropH}`);
+        clone.setAttribute('width', gifW);
+        clone.setAttribute('height', gifH);
+        
+        const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+        style.textContent = 'text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }';
+        clone.insertBefore(style, clone.firstChild);
+        clone.querySelectorAll('text').forEach(t => {
+          t.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif');
+        });
+        
+        const svgData = new XMLSerializer().serializeToString(clone);
+        const img = new Image();
+        
+        await new Promise((resolve) => {
+          img.onload = () => {
+            const c = document.createElement('canvas');
+            c.width = gifW;
+            c.height = gifH;
+            const ctx = c.getContext('2d');
+            ctx.fillStyle = COLORS.bg;
+            ctx.fillRect(0, 0, gifW, gifH);
+            ctx.drawImage(img, 0, 0, gifW, gifH);
+            encoder.addFrame(ctx.getImageData(0, 0, gifW, gifH));
+            document.getElementById('gifProgress').textContent = Math.round((frame + 1) / numFrames * 100) + '%';
+            resolve();
+          };
+          img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+        });
+        
+        // Yield to UI
+        await new Promise(r => setTimeout(r, 10));
+      }
+      
+      const gifBytes = encoder.encode();
+      const blob = new Blob([gifBytes], { type: 'image/gif' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'diagram-animated.gif';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      
+      document.body.removeChild(progress);
+    }
     
     // ===== MERMAID INTEGRATION =====
     let mermaidSyncPaused = false;
