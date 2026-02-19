@@ -236,10 +236,15 @@
           <button onclick="toggleMermaidSidebar()" title="Close (M)" style="width:24px;height:24px;background:transparent;border:1px solid #414868;border-radius:4px;font-size:12px;color:#a9b1d6;cursor:pointer">✕</button>
         </div>
       </div>
-      <textarea id="mermaidEditor" spellcheck="false" placeholder="flowchart TD
-    A[Start] --> B{Decision}
-    B -->|Yes| C[Action]
-    B -->|No| D[End]" style="flex:1;background:#24283b;color:#a9b1d6;border:none;padding:12px;font-family:monospace;font-size:12px;line-height:1.5;resize:none;outline:none"></textarea>
+      <div id="editorContainer" style="flex:1;display:flex;overflow:hidden;background:#24283b">
+        <!-- Line numbers -->
+        <div id="lineNumbers" style="padding:12px 0;padding-right:8px;padding-left:8px;background:#1e2030;color:#565f89;font-family:'JetBrains Mono',Consolas,monospace;font-size:12px;line-height:1.5;text-align:right;user-select:none;overflow:hidden;min-width:32px;border-right:1px solid #414868">1</div>
+        <!-- Editor wrapper with highlight overlay -->
+        <div style="flex:1;position:relative;overflow:auto" id="editorScroll">
+          <pre id="editorHighlight" aria-hidden="true" style="position:absolute;top:0;left:0;right:0;margin:0;padding:12px;font-family:'JetBrains Mono',Consolas,monospace;font-size:12px;line-height:1.5;color:#a9b1d6;white-space:pre-wrap;word-wrap:break-word;pointer-events:none;overflow:hidden"></pre>
+          <textarea id="mermaidEditor" spellcheck="false" placeholder="flowchart TD&#10;    A[Start] --> B{Decision}&#10;    B -->|Yes| C[Action]&#10;    B -->|No| D[End]" style="position:relative;width:100%;height:100%;background:transparent;color:transparent;caret-color:#a9b1d6;border:none;padding:12px;font-family:'JetBrains Mono',Consolas,monospace;font-size:12px;line-height:1.5;resize:none;outline:none;white-space:pre-wrap;word-wrap:break-word;z-index:1"></textarea>
+        </div>
+      </div>
       <div id="mermaidError" style="display:none;padding:8px 12px;background:rgba(247,118,142,0.1);border-top:1px solid #f7768e;font-size:11px;color:#f7768e"></div>
       <div style="padding:8px 12px;border-top:1px solid #414868;font-size:10px;color:#565f89">
         <strong>Shapes:</strong> [rect] (pill) {diamond} ((circle))<br>
@@ -2706,6 +2711,7 @@
         // Populate with current diagram's Mermaid code
         const editor = document.getElementById('mermaidEditor');
         editor.value = generateMermaid();
+        updateEditorHighlight();
         document.getElementById('mermaidError').style.display = 'none';
       } else {
         sidebar.classList.add('hidden');
@@ -2713,6 +2719,194 @@
         toggle.classList.remove('active');
       }
     }
+    
+    // --- Mermaid Syntax Highlighting ---
+    const SH = {
+      kw: 'color:#bb9af7;font-weight:600',    // purple - diagram types
+      dir: 'color:#ff9e64',                     // orange - directions
+      block: 'color:#c0caf5;font-weight:600',  // bright white - subgraph/end/loop
+      arrow: 'color:#7aa2f7',                   // blue - arrows
+      label: 'color:#e0af68',                   // yellow - labels
+      str: 'color:#9ece6a',                     // green - strings/subgraph names
+      bracket: 'color:#7dcfff',                 // cyan - shape brackets
+      comment: 'color:#565f89;font-style:italic', // gray - comments
+      seqkw: 'color:#c0caf5;font-weight:600',  // white - sequence keywords
+      style: 'color:#bb9af7',                   // purple - classDef/style
+    };
+    function sp(style, text) { return `<span style="${style}">${text}</span>`; }
+    function hesc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    
+    function highlightMermaid(code) {
+      return code.split('\n').map(line => highlightLine(line)).join('\n');
+    }
+    
+    function highlightLine(raw) {
+      // Comment line
+      if (raw.trim().startsWith('%%')) {
+        return hesc(raw).replace(/(%%.*)/g, sp(SH.comment, '$1'));
+      }
+      
+      const trimmed = raw.trim();
+      const indent = raw.match(/^(\s*)/)[1];
+      
+      // Diagram declaration: flowchart TD, graph LR, sequenceDiagram
+      const diagMatch = trimmed.match(/^(flowchart|graph|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|gitGraph)(\s+(TD|TB|LR|RL|BT))?(.*)$/);
+      if (diagMatch) {
+        let result = indent + sp(SH.kw, diagMatch[1]);
+        if (diagMatch[3]) result += ' ' + sp(SH.dir, diagMatch[3]);
+        if (diagMatch[4]) result += hesc(diagMatch[4]);
+        return result;
+      }
+      
+      // subgraph with label
+      const subMatch = trimmed.match(/^(subgraph)\s+(.*)$/);
+      if (subMatch) {
+        return indent + sp(SH.block, 'subgraph') + ' ' + sp(SH.str, hesc(subMatch[2]));
+      }
+      
+      // end
+      if (trimmed === 'end') {
+        return indent + sp(SH.block, 'end');
+      }
+      
+      // Sequence keywords
+      const seqMatch = trimmed.match(/^(participant|actor|activate|deactivate|autonumber|loop|alt|else|opt|par|and|rect|critical|break)\b(.*)$/);
+      if (seqMatch) {
+        return indent + sp(SH.seqkw, seqMatch[1]) + highlightTokens(seqMatch[2]);
+      }
+      
+      // Note
+      const noteMatch = trimmed.match(/^(Note\s+(?:left|right|over))\b(.*)$/);
+      if (noteMatch) {
+        return indent + sp(SH.seqkw, hesc(noteMatch[1])) + highlightTokens(noteMatch[2]);
+      }
+      
+      // Style keywords
+      const styleMatch = trimmed.match(/^(classDef|class|style|linkStyle)\b(.*)$/);
+      if (styleMatch) {
+        return indent + sp(SH.style, styleMatch[1]) + highlightTokens(styleMatch[2]);
+      }
+      
+      // Connection lines (nodes and arrows)
+      return indent + highlightTokens(trimmed);
+    }
+    
+    function highlightTokens(text) {
+      if (!text) return '';
+      let result = '';
+      let i = 0;
+      const s = text;
+      
+      while (i < s.length) {
+        // Inline comment
+        if (s[i] === '%' && s[i+1] === '%') {
+          result += sp(SH.comment, hesc(s.slice(i)));
+          break;
+        }
+        // Quoted string
+        if (s[i] === '"') {
+          const end = s.indexOf('"', i + 1);
+          if (end !== -1) {
+            result += sp(SH.str, hesc(s.slice(i, end + 1)));
+            i = end + 1;
+            continue;
+          }
+        }
+        // Arrow label |text|
+        if (s[i] === '|') {
+          const end = s.indexOf('|', i + 1);
+          if (end !== -1) {
+            result += sp(SH.label, hesc(s.slice(i, end + 1)));
+            i = end + 1;
+            continue;
+          }
+        }
+        // Arrows: -->, --->, ===>, -.->, -..->, <-->, ==>, ---
+        const arrowMatch = s.slice(i).match(/^(<?\-[\-\.]+>|={2,}>|<?\-[\-\.]*\->|<\-\->|o\-\-o|x\-\-x|\-\-\-+|\-\->>|\->>|\->>\s|\-\))/);
+        if (arrowMatch) {
+          result += sp(SH.arrow, hesc(arrowMatch[0]));
+          i += arrowMatch[0].length;
+          continue;
+        }
+        // Shape brackets: [, ], (, ), {, }, and compound like ((, )), [(, )], {{, }}, ([, ])
+        if ('[](){}' .includes(s[i])) {
+          // Check for compound brackets
+          const compound = s.slice(i, i+2);
+          if (['((','((','[[',']]','))','[(','([',')]','])','{{','}}'].includes(compound)) {
+            result += sp(SH.bracket, hesc(compound));
+            i += 2;
+            continue;
+          }
+          result += sp(SH.bracket, hesc(s[i]));
+          i++;
+          continue;
+        }
+        // Ampersand (parallel operator)
+        if (s[i] === '&') {
+          result += sp(SH.arrow, '&amp;');
+          i++;
+          continue;
+        }
+        // Regular text
+        let plain = '';
+        while (i < s.length && !'[](){}|"&'.includes(s[i]) && !(s[i] === '%' && s[i+1] === '%') && !(s[i] === '-' || s[i] === '=' || s[i] === '<' || s[i] === 'o' || s[i] === 'x')) {
+          plain += s[i];
+          i++;
+        }
+        if (!plain && i < s.length) {
+          // Didn't match any special pattern, just advance one char
+          plain = s[i];
+          i++;
+        }
+        result += hesc(plain);
+      }
+      return result;
+    }
+    
+    function updateEditorHighlight() {
+      const editor = document.getElementById('mermaidEditor');
+      const highlight = document.getElementById('editorHighlight');
+      const lineNumbers = document.getElementById('lineNumbers');
+      
+      const code = editor.value;
+      highlight.innerHTML = highlightMermaid(code) + '\n'; // trailing newline for scroll sync
+      
+      // Update line numbers
+      const lines = code.split('\n');
+      lineNumbers.innerHTML = lines.map((_, i) => `<div style="height:1.5em">${i + 1}</div>`).join('');
+      
+      // Sync scroll
+      syncEditorScroll();
+    }
+    
+    function syncEditorScroll() {
+      const editor = document.getElementById('mermaidEditor');
+      const highlight = document.getElementById('editorHighlight');
+      const lineNumbers = document.getElementById('lineNumbers');
+      highlight.scrollTop = editor.scrollTop;
+      highlight.scrollLeft = editor.scrollLeft;
+      lineNumbers.scrollTop = editor.scrollTop;
+    }
+    
+    // Hook up editor events
+    (function initCodeEditor() {
+      const editor = document.getElementById('mermaidEditor');
+      editor.addEventListener('input', updateEditorHighlight);
+      editor.addEventListener('scroll', syncEditorScroll);
+      
+      // Tab key inserts spaces
+      editor.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const start = editor.selectionStart;
+          const end = editor.selectionEnd;
+          editor.value = editor.value.substring(0, start) + '    ' + editor.value.substring(end);
+          editor.selectionStart = editor.selectionEnd = start + 4;
+          updateEditorHighlight();
+        }
+      });
+    })();
+    // --- End Syntax Highlighting ---
     
     function generateMermaid() {
       if (nodes.length === 0) return 'flowchart TD\n    %% Empty diagram';
