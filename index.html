@@ -3212,31 +3212,78 @@
         startIdx = 1;
       }
       
+      // Track subgraphs: each has { id, label, children: [nodeId, ...] }
+      const subgraphs = [];
+      const subgraphStack = []; // for nesting
+      
       // Parse each line
       for (let i = startIdx; i < lines.length; i++) {
         const line = lines[i];
         
-        // Skip subgraph, style, class, linkStyle, click
-        if (line.match(/^subgraph\s/) || line === 'end' || 
-            line.startsWith('style ') || line.startsWith('class ') ||
+        // Subgraph start: subgraph id["label"] or subgraph "label" or subgraph label
+        const sgMatch = line.match(/^subgraph\s+(?:(\w+)\s*\[?"?([^"\]]*)"?\]?|"([^"]+)"|(\S+.*))\s*$/);
+        if (sgMatch) {
+          const id = sgMatch[1] || ('sg_' + subgraphs.length);
+          const label = sgMatch[2] || sgMatch[3] || sgMatch[4] || id;
+          const sg = { id, label: label.trim(), children: [] };
+          subgraphs.push(sg);
+          subgraphStack.push(sg);
+          continue;
+        }
+        
+        // Subgraph end
+        if (line === 'end' && subgraphStack.length > 0) {
+          subgraphStack.pop();
+          continue;
+        }
+        
+        // Skip style, class, linkStyle, click
+        if (line.startsWith('style ') || line.startsWith('class ') ||
             line.startsWith('linkStyle ') || line.startsWith('click ')) continue;
         
         // Try parsing as connection line (handles chains and & operator)
-        if (parseConnectionLine(line)) continue;
+        if (parseConnectionLine(line)) {
+          // Add any newly registered nodes to current subgraph
+          if (subgraphStack.length > 0) {
+            const currentSg = subgraphStack[subgraphStack.length - 1];
+            Object.keys(nodeMap).forEach(id => {
+              if (!subgraphs.some(sg => sg.children.includes(id)) && 
+                  !subgraphs.some(sg => sg.id === id)) {
+                currentSg.children.push(id);
+              }
+            });
+          }
+          continue;
+        }
         
         // Standalone node definition (possibly & separated)
         const parts = splitAmpersand(line);
         for (const part of parts) {
           const node = parseNodeToken(part);
-          if (node) registerNode(node);
+          if (node) {
+            registerNode(node);
+            // Add to current subgraph
+            if (subgraphStack.length > 0) {
+              const currentSg = subgraphStack[subgraphStack.length - 1];
+              if (!currentSg.children.includes(node.id)) {
+                currentSg.children.push(node.id);
+              }
+            }
+          }
         }
+      }
+      
+      // Add container nodes for subgraphs
+      for (const sg of subgraphs) {
+        result.subgraphs = result.subgraphs || [];
+        result.subgraphs.push(sg);
       }
       
       result.nodes = Object.values(nodeMap);
       return result;
     }
     
-    function layoutNodes(parsedNodes, diagramType) {
+    function layoutNodes(parsedNodes, diagramType, subgraphs) {
       const startX = 100;
       const startY = 100;
       
@@ -3258,6 +3305,73 @@
           x: startX + (i % cols) * 220,
           y: startY + Math.floor(i / cols) * 180
         }));
+      }
+      
+      // Flowchart with subgraphs: group nodes by subgraph
+      if (subgraphs && subgraphs.length > 0) {
+        const result = [];
+        const positioned = new Set();
+        const nodeSpacingX = 150;
+        const nodeSpacingY = 70;
+        const groupSpacingX = 40;
+        const groupHeaderH = 40;
+        const groupPadding = 25;
+        
+        // Layout subgraphs in a grid
+        const sgCols = Math.min(3, Math.ceil(Math.sqrt(subgraphs.length)));
+        let groupX = startX;
+        let groupY = startY;
+        let rowMaxH = 0;
+        
+        subgraphs.forEach((sg, sgIdx) => {
+          const children = parsedNodes.filter(n => sg.children.includes(n.id));
+          if (children.length === 0) return;
+          
+          const childCols = Math.min(3, Math.ceil(Math.sqrt(children.length)));
+          const innerX = groupX + groupPadding;
+          const innerY = groupY + groupPadding + groupHeaderH;
+          
+          children.forEach((n, ci) => {
+            const col = ci % childCols;
+            const row = Math.floor(ci / childCols);
+            result.push({
+              ...n,
+              x: innerX + col * nodeSpacingX,
+              y: innerY + row * nodeSpacingY
+            });
+            positioned.add(n.id);
+          });
+          
+          const childRows = Math.ceil(children.length / childCols);
+          const groupW = childCols * nodeSpacingX + groupPadding * 2;
+          const groupH = childRows * nodeSpacingY + groupPadding * 2 + groupHeaderH;
+          rowMaxH = Math.max(rowMaxH, groupH);
+          
+          // Next subgraph position
+          if ((sgIdx + 1) % sgCols === 0) {
+            groupX = startX;
+            groupY += rowMaxH + groupSpacingX;
+            rowMaxH = 0;
+          } else {
+            groupX += groupW + groupSpacingX;
+          }
+        });
+        
+        // Position ungrouped nodes below
+        const ungrouped = parsedNodes.filter(n => !positioned.has(n.id));
+        if (ungrouped.length > 0) {
+          const maxY = result.length > 0 ? Math.max(...result.map(n => n.y)) + 100 : startY;
+          const cols = Math.ceil(Math.sqrt(ungrouped.length));
+          ungrouped.forEach((n, i) => {
+            result.push({
+              ...n,
+              x: startX + (i % cols) * nodeSpacingX,
+              y: maxY + Math.floor(i / cols) * nodeSpacingY
+            });
+          });
+        }
+        
+        return result;
       }
       
       // Default: grid layout
@@ -3318,7 +3432,7 @@
         sequenceFrames = [];
         
         // Create nodes with layout
-        const layouted = layoutNodes(parsed.nodes, parsed.diagramType);
+        const layouted = layoutNodes(parsed.nodes, parsed.diagramType, parsed.subgraphs);
         const idMap = {};
         const isSequence = parsed.diagramType === 'sequence';
         
@@ -3361,6 +3475,37 @@
           
           idMap[n.id] = node.id;
         });
+        
+        // Create container nodes for subgraphs and position children inside
+        if (parsed.subgraphs && parsed.subgraphs.length > 0) {
+          const padding = 20;
+          const headerHeight = 30;
+          
+          parsed.subgraphs.forEach(sg => {
+            // Find child nodes that were created
+            const childNodeIds = sg.children.map(cid => idMap[cid]).filter(Boolean);
+            const childNodes = childNodeIds.map(cid => nodes.find(n => n.id === cid)).filter(Boolean);
+            
+            if (childNodes.length === 0) return;
+            
+            // Calculate bounding box of children
+            const minX = Math.min(...childNodes.map(n => n.x));
+            const minY = Math.min(...childNodes.map(n => n.y));
+            const maxX = Math.max(...childNodes.map(n => n.x + n.width));
+            const maxY = Math.max(...childNodes.map(n => n.y + n.height));
+            
+            // Create container that wraps children
+            const containerX = minX - padding;
+            const containerY = minY - padding - headerHeight;
+            const containerW = (maxX - minX) + padding * 2;
+            const containerH = (maxY - minY) + padding * 2 + headerHeight;
+            
+            const container = createNode('container', containerX, containerY, containerW, containerH);
+            container.label = sg.label;
+            
+            idMap[sg.id] = container.id;
+          });
+        }
         
         // Create connections
         if (isSequence) {
