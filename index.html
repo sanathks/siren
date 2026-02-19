@@ -3654,6 +3654,7 @@
           
           const nodeType = isParticipant ? 'rect' : (isClass ? 'rect' : n.type);
           const node = createNode(nodeType, n.x, n.y, width, height);
+          node.label = n.label;
           
           // Store class properties/methods
           if (isClass) {
