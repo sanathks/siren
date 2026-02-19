@@ -2024,9 +2024,40 @@
         render();
       }
       
-      selectNode(node.id);
+      // Shift+click: toggle node in multi-selection
+      if (e.shiftKey) {
+        if (selectedIds.includes(node.id)) {
+          selectedIds = selectedIds.filter(id => id !== node.id);
+        } else {
+          if (selectedId && !selectedIds.includes(selectedId)) {
+            selectedIds.push(selectedId);
+          }
+          selectedIds.push(node.id);
+          selectedId = null;
+          floatingToolbar.classList.add('hidden');
+        }
+        render();
+      } else if (!selectedIds.includes(node.id)) {
+        // Normal click on node not in multi-selection: single-select
+        selectNode(node.id);
+      }
+      
       const pos = screenToCanvas(e.clientX, e.clientY);
-      dragging = { node, offsetX: pos.x - node.x, offsetY: pos.y - node.y };
+      
+      // If this node is part of a multi-selection, drag them all
+      if (selectedIds.includes(node.id) && selectedIds.length > 1) {
+        const dragNodes = nodes.filter(n => selectedIds.includes(n.id));
+        dragging = { 
+          node, 
+          offsetX: pos.x - node.x, 
+          offsetY: pos.y - node.y,
+          multiDrag: dragNodes.map(n => ({ node: n, startX: n.x, startY: n.y })),
+          startX: node.x,
+          startY: node.y
+        };
+      } else {
+        dragging = { node, offsetX: pos.x - node.x, offsetY: pos.y - node.y };
+      }
       e.preventDefault();
     }
     
@@ -2198,10 +2229,23 @@
         }
       }
       
-      // Dragging node
+      // Dragging node(s)
       if (dragging) {
-        dragging.node.x = snap(pos.x - dragging.offsetX);
-        dragging.node.y = snap(pos.y - dragging.offsetY);
+        const newX = snap(pos.x - dragging.offsetX);
+        const newY = snap(pos.y - dragging.offsetY);
+        
+        if (dragging.multiDrag) {
+          // Move all selected nodes by the same delta
+          const dx = newX - dragging.startX;
+          const dy = newY - dragging.startY;
+          dragging.multiDrag.forEach(({ node: n, startX, startY }) => {
+            n.x = snap(startX + dx);
+            n.y = snap(startY + dy);
+          });
+        } else {
+          dragging.node.x = newX;
+          dragging.node.y = newY;
+        }
         if (selectedId === dragging.node.id) positionToolbar(dragging.node);
         render();
       }
