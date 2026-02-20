@@ -1360,10 +1360,11 @@
           const txtColor = (style === 'outline' || style === 'stripe' || style === 'grid') ? (node.outlineColor || COLORS.fg) : textColor;
           const rcx = node.x + node.width/2, rcy = node.y + node.height/2;
           const clipId = 'clip-' + node.id;
-          shape = `${customPattern}<defs><clipPath id="${clipId}"><rect x="${node.x + 4}" y="${node.y + 2}" width="${node.width - 8}" height="${node.height - 4}" rx="${rx}"/></clipPath></defs>
+          const pad = 8;
+          shape = `${customPattern}<defs><clipPath id="${clipId}"><rect x="${node.x + pad}" y="${node.y + 2}" width="${node.width - pad*2}" height="${node.height - 4}" rx="${rx}"/></clipPath></defs>
             <rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="${rx}" 
             fill="${fill}" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
-            <g clip-path="url(#${clipId})">${renderWrappedText(node.label, rcx, rcy, node.width - 16, 12, txtColor, '')}</g>`;
+            <g clip-path="url(#${clipId})">${renderWrappedText(node.label, rcx, rcy, node.width - pad*2, 12, txtColor, '')}</g>`;
         }
         
         // Add lifeline for sequence participants with clickable connection zones
@@ -1460,8 +1461,7 @@
     function wrapLabel(label, maxWidth, fontSize) {
       if (!label) return [''];
       const charW = fontSize * 0.6; // approximate character width
-      const padding = 16; // padding on each side
-      const maxChars = Math.max(4, Math.floor((maxWidth - padding) / charW));
+      const maxChars = Math.max(4, Math.floor(maxWidth / charW));
       const words = label.split(' ');
       const lines = [];
       let cur = '';
