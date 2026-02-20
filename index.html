@@ -2227,7 +2227,6 @@
         fromIdx: parseInt(e.target.dataset.idx) || 1
       };
       showTempLine();
-      canvas.classList.add('show-connectors');
       e.preventDefault();
       e.stopPropagation();
     }
@@ -2243,7 +2242,6 @@
         lifelineY: lifelineY
       };
       showTempLine();
-      canvas.classList.add('show-connectors');
       e.preventDefault();
       e.stopPropagation();
     }
@@ -2355,12 +2353,51 @@
       if (conn) conn.classList.add('active-connector');
     }
 
+    function updateConnectorProximityForConnection(pos, fromNodeId) {
+      // Clear all active connectors
+      document.querySelectorAll('.connector.active-connector').forEach(el => el.classList.remove('active-connector'));
+
+      const PROXIMITY = 80; // px distance to start showing connectors
+
+      nodes.forEach(n => {
+        if (n.id === fromNodeId || n.type === 'line') return;
+
+        // Distance from mouse to node center
+        const cx = n.x + n.width / 2;
+        const cy = n.y + n.height / 2;
+
+        // Check if mouse is within node bounds + proximity margin
+        const nearX = pos.x >= n.x - PROXIMITY && pos.x <= n.x + n.width + PROXIMITY;
+        const nearY = pos.y >= n.y - PROXIMITY && pos.y <= n.y + n.height + PROXIMITY;
+        if (!nearX || !nearY) return;
+
+        // Find closest side
+        const dTop = Math.abs(pos.y - n.y);
+        const dBottom = Math.abs(pos.y - (n.y + n.height));
+        const dLeft = Math.abs(pos.x - n.x);
+        const dRight = Math.abs(pos.x - (n.x + n.width));
+        const min = Math.min(dTop, dBottom, dLeft, dRight);
+        let side;
+        if (min === dTop) side = 'top';
+        else if (min === dBottom) side = 'bottom';
+        else if (min === dLeft) side = 'left';
+        else side = 'right';
+
+        const conn = document.querySelector(`.connector[data-node="${n.id}"][data-side="${side}"]`);
+        if (conn) conn.classList.add('active-connector');
+      });
+    }
+
     document.addEventListener('mousemove', (e) => {
       const pos = screenToCanvas(e.clientX, e.clientY);
       
       // Update connector proximity (show nearest side connector)
-      if (!connecting && !drawing && !dragging) {
-        updateConnectorProximity(pos);
+      if (!drawing && !dragging) {
+        if (connecting) {
+          updateConnectorProximityForConnection(pos, connecting.from);
+        } else {
+          updateConnectorProximity(pos);
+        }
       }
 
       // Drawing shape preview
@@ -2651,6 +2688,7 @@
         }
         
         connecting = null;
+        document.querySelectorAll('.connector.active-connector').forEach(el => el.classList.remove('active-connector'));
         // Only hide temp line if not showing picker (picker needs to show the preview)
         if (!pendingConnection) {
           hideTempLine();
