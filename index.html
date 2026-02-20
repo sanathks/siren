@@ -1249,7 +1249,7 @@
           const txtColor = (style === 'outline' || style === 'stripe' || style === 'grid') ? (node.outlineColor || COLORS.fg) : textColor;
           shape = `${customPattern}<polygon points="${cx},${node.y} ${node.x + node.width},${cy} ${cx},${node.y + node.height} ${node.x},${cy}" 
             fill="${fill}" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
-            <text x="${cx}" y="${cy + 4}" fill="${txtColor}" font-size="12" font-family="system-ui, sans-serif" text-anchor="middle">${esc(node.label)}</text>`;
+            ${renderWrappedText(node.label, cx, cy, node.width * 0.7, 12, txtColor, '')}`;
         } else if (node.type === 'circle') {
           const { fill, style } = getFill(node, 'infill');
           const customPattern = getCustomPattern(node);
@@ -1257,7 +1257,7 @@
           const txtColor = (style === 'outline' || style === 'stripe' || style === 'grid') ? (node.outlineColor || COLORS.fg) : textColor;
           shape = `${customPattern}<circle cx="${cx}" cy="${cy}" r="${node.width / 2}" 
             fill="${fill}" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
-            <text x="${cx}" y="${cy + 4}" fill="${txtColor}" font-size="12" font-family="system-ui, sans-serif" text-anchor="middle">${esc(node.label)}</text>`;
+            ${renderWrappedText(node.label, cx, cy, node.width * 0.7, 12, txtColor, '')}`;
         } else if (node.type === 'text') {
           // Text node - just text, no shape border (unless selected)
           const txtColor = node.color || COLORS.fg;
@@ -1354,9 +1354,10 @@
           const rx = node.type === 'pill' ? node.height / 2 : 6;
           // For outline, stripe, grid - use light text; for solid infill - use contrast text
           const txtColor = (style === 'outline' || style === 'stripe' || style === 'grid') ? (node.outlineColor || COLORS.fg) : textColor;
+          const rcx = node.x + node.width/2, rcy = node.y + node.height/2;
           shape = `${customPattern}<rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="${rx}" 
             fill="${fill}" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
-            <text x="${node.x + node.width/2}" y="${node.y + node.height/2 + 4}" fill="${txtColor}" font-size="12" font-family="system-ui, sans-serif" text-anchor="middle">${esc(node.label)}</text>`;
+            ${renderWrappedText(node.label, rcx, rcy, node.width, 12, txtColor, '')}`;
         }
         
         // Add lifeline for sequence participants with clickable connection zones
@@ -1447,7 +1448,42 @@
     }
     
     function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    
+
+    // Wrap label text into lines that fit within a given pixel width
+    // charWidth: approximate px per character at the given font-size
+    function wrapLabel(label, maxWidth, fontSize) {
+      if (!label) return [''];
+      const charW = fontSize * 0.6; // approximate character width
+      const maxChars = Math.max(4, Math.floor(maxWidth / charW));
+      const words = label.split(' ');
+      const lines = [];
+      let cur = '';
+      for (const w of words) {
+        const test = cur ? cur + ' ' + w : w;
+        if (test.length > maxChars && cur) {
+          lines.push(cur);
+          cur = w;
+        } else {
+          cur = test;
+        }
+      }
+      if (cur) lines.push(cur);
+      return lines;
+    }
+
+    // Render wrapped text as SVG tspan elements centered at (cx, cy)
+    function renderWrappedText(label, cx, cy, maxWidth, fontSize, fill, attrs) {
+      const lines = wrapLabel(label, maxWidth - 12, fontSize); // 12px padding
+      const lineH = fontSize + 4;
+      const startY = cy - ((lines.length - 1) * lineH) / 2;
+      const extra = attrs || '';
+      return `<text x="${cx}" fill="${fill}" font-size="${fontSize}" font-family="system-ui, sans-serif" text-anchor="middle" ${extra}>${
+        lines.map((line, i) => 
+          `<tspan x="${cx}" dy="${i === 0 ? 0 : lineH}" y="${i === 0 ? startY + 4 : ''}">${esc(line)}</tspan>`
+        ).join('')
+      }</text>`;
+    }
+
     // Selection
     function selectNode(id) {
       selectedId = id;
