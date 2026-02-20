@@ -1802,7 +1802,8 @@
       } else if (hasClasses) {
         arrangeClass();
       } else {
-        arrangeFlowchart();
+        // Use the same Sugiyama layout algorithm as Mermaid import
+        arrangeFlowchartSugiyama();
       }
       
       saveState();
@@ -1975,6 +1976,98 @@
         const flowBottom = Math.max(...flowNodes.map(n => n.y + n.height)) + 50;
         lineNodes.forEach((node, i) => {
           node.x = startX + i * 150;
+          node.y = flowBottom;
+        });
+      }
+    }
+    
+    // Sugiyama-style layout for auto-arrange (reuses layoutNodes algorithm from Mermaid import)
+    function arrangeFlowchartSugiyama() {
+      // Separate container nodes from regular nodes
+      const containers = nodes.filter(n => n.type === 'container');
+      const flowNodes = nodes.filter(n => n.type !== 'container' && n.type !== 'line');
+      const lineNodes = nodes.filter(n => n.type === 'line');
+      
+      if (flowNodes.length === 0) return;
+      
+      // Build parsed-style data for layoutNodes
+      const parsedNodes = flowNodes.map(n => ({
+        id: n.id,
+        label: n.label,
+        type: n.isClass ? 'class' : (n.isParticipant ? 'participant' : 'rect'),
+        properties: n.properties,
+        methods: n.methods
+      }));
+      
+      const parsedConnections = connections
+        .filter(c => !c.isSequenceMessage)
+        .map(c => ({ from: c.from, to: c.to, label: c.label }));
+      
+      // Build subgraph info from containers: find which nodes are inside each container
+      const subgraphs = containers.map(c => {
+        const children = flowNodes
+          .filter(n => n.x >= c.x && n.y >= c.y && 
+                       n.x + n.width <= c.x + c.width && 
+                       n.y + n.height <= c.y + c.height)
+          .map(n => n.id);
+        return { id: c.id, label: c.label, children };
+      }).filter(sg => sg.children.length > 0);
+      
+      // Determine diagram type
+      const diagramType = nodes.some(n => n.isClass) ? 'class' : 'flowchart';
+      
+      // Run the same layout algorithm used by Mermaid import
+      const layouted = layoutNodes(parsedNodes, diagramType, subgraphs.length > 0 ? subgraphs : null, parsedConnections);
+      
+      // Apply positions back to actual nodes
+      layouted.forEach(ln => {
+        const node = nodes.find(n => n.id === ln.id);
+        if (node) {
+          node.x = ln.x;
+          node.y = ln.y;
+        }
+      });
+      
+      // Reposition containers around their children
+      if (subgraphs.length > 0) {
+        const padding = 25;
+        const headerHeight = 35;
+        
+        containers.forEach(container => {
+          const sg = subgraphs.find(s => s.id === container.id);
+          if (!sg || sg.children.length === 0) return;
+          
+          const childNodes = sg.children.map(cid => nodes.find(n => n.id === cid)).filter(Boolean);
+          if (childNodes.length === 0) return;
+          
+          const minX = Math.min(...childNodes.map(n => n.x));
+          const minY = Math.min(...childNodes.map(n => n.y));
+          const maxX = Math.max(...childNodes.map(n => n.x + n.width));
+          const maxY = Math.max(...childNodes.map(n => n.y + n.height));
+          
+          container.x = minX - padding;
+          container.y = minY - padding - headerHeight;
+          container.width = (maxX - minX) + padding * 2;
+          container.height = (maxY - minY) + padding * 2 + headerHeight;
+        });
+      }
+      
+      // Update connection sides for better routing
+      connections.filter(c => !c.isSequenceMessage).forEach(c => {
+        const fromNode = nodes.find(n => n.id === c.from);
+        const toNode = nodes.find(n => n.id === c.to);
+        if (fromNode && toNode) {
+          const { fromSide, toSide } = getOptimalSides(fromNode, toNode);
+          c.fromSide = fromSide;
+          c.toSide = toSide;
+        }
+      });
+      
+      // Position line/arrow shapes at the bottom
+      if (lineNodes.length > 0) {
+        const flowBottom = Math.max(...flowNodes.map(n => n.y + n.height)) + 50;
+        lineNodes.forEach((node, i) => {
+          node.x = 100 + i * 150;
           node.y = flowBottom;
         });
       }
