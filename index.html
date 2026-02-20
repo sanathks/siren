@@ -2392,12 +2392,8 @@
       const pos = screenToCanvas(e.clientX, e.clientY);
       
       // Update connector proximity (show nearest side connector)
-      if (!drawing && !dragging) {
-        if (connecting) {
-          updateConnectorProximityForConnection(pos, connecting.from);
-        } else {
-          updateConnectorProximity(pos);
-        }
+      if (!connecting && !drawing && !dragging) {
+        updateConnectorProximity(pos);
       }
 
       // Drawing shape preview
@@ -2668,6 +2664,55 @@
             }
             saveState();
             render();
+          }
+        } else if (target?.closest('.node')) {
+          // Dropped on a node body (not on a connector) - auto-snap to nearest side
+          const nodeEl = target.closest('.node');
+          const toId = nodeEl.dataset.id;
+          if (toId && toId !== connecting.from) {
+            const targetNode = nodes.find(n => n.id === toId);
+            if (targetNode) {
+              // Find nearest side based on drop position
+              const dTop = Math.abs(pos.y - targetNode.y);
+              const dBottom = Math.abs(pos.y - (targetNode.y + targetNode.height));
+              const dLeft = Math.abs(pos.x - targetNode.x);
+              const dRight = Math.abs(pos.x - (targetNode.x + targetNode.width));
+              const min = Math.min(dTop, dBottom, dLeft, dRight);
+              let toSide;
+              if (min === dTop) toSide = 'top';
+              else if (min === dBottom) toSide = 'bottom';
+              else if (min === dLeft) toSide = 'left';
+              else toSide = 'right';
+
+              if (connecting.isLifeline) {
+                connections.push({
+                  id: 'c' + Date.now(),
+                  from: connecting.from,
+                  to: toId,
+                  fromSide: 'bottom',
+                  toSide: toSide,
+                  fromIdx: 1,
+                  toIdx: 1,
+                  label: '',
+                  isSequenceMessage: true,
+                  messageY: connecting.lifelineY || pos.y,
+                  arrow: '->>'
+                });
+              } else {
+                connections.push({
+                  id: 'c' + Date.now(),
+                  from: connecting.from,
+                  fromSide: connecting.fromSide,
+                  fromIdx: connecting.fromIdx,
+                  to: toId,
+                  toSide: toSide,
+                  toIdx: 1,
+                  lineStyle: globalLineStyle
+                });
+              }
+              saveState();
+              render();
+            }
           }
         } else if (!target?.closest('.node')) {
           // Released on empty canvas
