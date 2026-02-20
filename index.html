@@ -1247,17 +1247,21 @@
           const cx = node.x + node.width / 2, cy = node.y + node.height / 2;
           // For outline, stripe, grid - use light text; for solid infill - use contrast text
           const txtColor = (style === 'outline' || style === 'stripe' || style === 'grid') ? (node.outlineColor || COLORS.fg) : textColor;
-          shape = `${customPattern}<polygon points="${cx},${node.y} ${node.x + node.width},${cy} ${cx},${node.y + node.height} ${node.x},${cy}" 
+          const clipId = 'clip-' + node.id;
+          shape = `${customPattern}<defs><clipPath id="${clipId}"><polygon points="${cx},${node.y} ${node.x + node.width},${cy} ${cx},${node.y + node.height} ${node.x},${cy}"/></clipPath></defs>
+            <polygon points="${cx},${node.y} ${node.x + node.width},${cy} ${cx},${node.y + node.height} ${node.x},${cy}" 
             fill="${fill}" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
-            ${renderWrappedText(node.label, cx, cy, node.width * 0.7, 12, txtColor, '')}`;
+            <g clip-path="url(#${clipId})">${renderWrappedText(node.label, cx, cy, node.width * 0.6, 11, txtColor, '')}</g>`;
         } else if (node.type === 'circle') {
           const { fill, style } = getFill(node, 'infill');
           const customPattern = getCustomPattern(node);
           const cx = node.x + node.width / 2, cy = node.y + node.height / 2;
           const txtColor = (style === 'outline' || style === 'stripe' || style === 'grid') ? (node.outlineColor || COLORS.fg) : textColor;
-          shape = `${customPattern}<circle cx="${cx}" cy="${cy}" r="${node.width / 2}" 
+          const clipId = 'clip-' + node.id;
+          shape = `${customPattern}<defs><clipPath id="${clipId}"><circle cx="${cx}" cy="${cy}" r="${node.width / 2}"/></clipPath></defs>
+            <circle cx="${cx}" cy="${cy}" r="${node.width / 2}" 
             fill="${fill}" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
-            ${renderWrappedText(node.label, cx, cy, node.width * 0.7, 12, txtColor, '')}`;
+            <g clip-path="url(#${clipId})">${renderWrappedText(node.label, cx, cy, node.width * 0.6, 11, txtColor, '')}</g>`;
         } else if (node.type === 'text') {
           // Text node - just text, no shape border (unless selected)
           const txtColor = node.color || COLORS.fg;
@@ -1355,9 +1359,11 @@
           // For outline, stripe, grid - use light text; for solid infill - use contrast text
           const txtColor = (style === 'outline' || style === 'stripe' || style === 'grid') ? (node.outlineColor || COLORS.fg) : textColor;
           const rcx = node.x + node.width/2, rcy = node.y + node.height/2;
-          shape = `${customPattern}<rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="${rx}" 
+          const clipId = 'clip-' + node.id;
+          shape = `${customPattern}<defs><clipPath id="${clipId}"><rect x="${node.x + 4}" y="${node.y + 2}" width="${node.width - 8}" height="${node.height - 4}" rx="${rx}"/></clipPath></defs>
+            <rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="${rx}" 
             fill="${fill}" stroke="${strokeColor}" stroke-width="1.5" class="node-border"/>
-            ${renderWrappedText(node.label, rcx, rcy, node.width, 12, txtColor, '')}`;
+            <g clip-path="url(#${clipId})">${renderWrappedText(node.label, rcx, rcy, node.width - 16, 12, txtColor, '')}</g>`;
         }
         
         // Add lifeline for sequence participants with clickable connection zones
@@ -1454,7 +1460,8 @@
     function wrapLabel(label, maxWidth, fontSize) {
       if (!label) return [''];
       const charW = fontSize * 0.6; // approximate character width
-      const maxChars = Math.max(4, Math.floor(maxWidth / charW));
+      const padding = 16; // padding on each side
+      const maxChars = Math.max(4, Math.floor((maxWidth - padding) / charW));
       const words = label.split(' ');
       const lines = [];
       let cur = '';
@@ -1473,7 +1480,7 @@
 
     // Render wrapped text as SVG tspan elements centered at (cx, cy)
     function renderWrappedText(label, cx, cy, maxWidth, fontSize, fill, attrs) {
-      const lines = wrapLabel(label, maxWidth - 12, fontSize); // 12px padding
+      const lines = wrapLabel(label, maxWidth, fontSize);
       const lineH = fontSize + 4;
       const startY = cy - ((lines.length - 1) * lineH) / 2;
       const extra = attrs || '';
