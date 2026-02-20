@@ -38,11 +38,11 @@
     .node { cursor: move; user-select: none; }
     .node:hover .node-border { stroke-width: 2.5; }
     .node.selected .node-border { stroke: #7aa2f7; stroke-width: 2.5; }
-    .connector { cursor: crosshair; opacity: 0; pointer-events: none; transition: opacity 0.15s; }
-    .node:hover .connector { opacity: 0.4; pointer-events: auto; }
-    .show-connectors .connector { opacity: 0.4; pointer-events: auto; }
+    .connector { cursor: crosshair; opacity: 0; pointer-events: none; transition: opacity 0.15s, r 0.1s; }
+    .connector.active-connector { opacity: 0.7; pointer-events: auto; }
+    .show-connectors .connector { opacity: 0.5; pointer-events: auto; }
     .show-connectors .lifeline-connector { opacity: 0.6; pointer-events: auto; }
-    .connector:hover { opacity: 1; fill: #7aa2f7 !important; }
+    .connector:hover, .connector.active-connector:hover { opacity: 1; fill: #7aa2f7 !important; }
     .lifeline-connector { opacity: 0; transition: opacity 0.15s, transform 0.15s; pointer-events: auto; }
     .node:hover .lifeline-connector { opacity: 0.5; }
     .lifeline-connector:hover { opacity: 1 !important; }
@@ -1423,23 +1423,15 @@
     }
     
     function renderConnectors(node) {
-      const connectors = [];
-      const offsets = [0.25, 0.5, 0.75];
-      ['top', 'bottom', 'left', 'right'].forEach(side => {
-        offsets.forEach((off, i) => {
-          let x, y;
-          if (side === 'top' || side === 'bottom') {
-            x = node.x + node.width * off;
-            y = side === 'top' ? node.y : node.y + node.height;
-          } else {
-            x = side === 'left' ? node.x : node.x + node.width;
-            y = node.y + node.height * off;
-          }
-          connectors.push({ x, y, side, idx: i });
-        });
-      });
-      return connectors.map(c => 
-        `<circle class="connector" cx="${c.x}" cy="${c.y}" r="3" fill="${COLORS.bg2}" stroke="${COLORS.fg}" stroke-width="1" data-node="${node.id}" data-side="${c.side}" data-idx="${c.idx}"/>`
+      // One connector per side at center (idx=1), bigger for easy clicking
+      const sides = [
+        { side: 'top', x: node.x + node.width * 0.5, y: node.y },
+        { side: 'bottom', x: node.x + node.width * 0.5, y: node.y + node.height },
+        { side: 'left', x: node.x, y: node.y + node.height * 0.5 },
+        { side: 'right', x: node.x + node.width, y: node.y + node.height * 0.5 },
+      ];
+      return sides.map(c => 
+        `<circle class="connector" cx="${c.x}" cy="${c.y}" r="6" fill="${COLORS.accent}" stroke="${COLORS.fg}" stroke-width="1.5" data-node="${node.id}" data-side="${c.side}" data-idx="1"/>`
       ).join('');
     }
     
@@ -2324,9 +2316,53 @@
       }
     });
     
+    // Track active connector side per node
+    let activeConnectorNode = null;
+    let activeConnectorSide = null;
+
+    function updateConnectorProximity(pos) {
+      // Clear previous active connectors
+      document.querySelectorAll('.connector.active-connector').forEach(el => el.classList.remove('active-connector'));
+      
+      // Find which node the mouse is over
+      const hoverNode = nodes.find(n => n.type !== 'line' && 
+        pos.x >= n.x && pos.x <= n.x + n.width && 
+        pos.y >= n.y && pos.y <= n.y + n.height);
+      
+      if (!hoverNode) {
+        activeConnectorNode = null;
+        activeConnectorSide = null;
+        return;
+      }
+
+      // Determine closest side
+      const dTop = pos.y - hoverNode.y;
+      const dBottom = (hoverNode.y + hoverNode.height) - pos.y;
+      const dLeft = pos.x - hoverNode.x;
+      const dRight = (hoverNode.x + hoverNode.width) - pos.x;
+      const min = Math.min(dTop, dBottom, dLeft, dRight);
+      let side;
+      if (min === dTop) side = 'top';
+      else if (min === dBottom) side = 'bottom';
+      else if (min === dLeft) side = 'left';
+      else side = 'right';
+
+      activeConnectorNode = hoverNode.id;
+      activeConnectorSide = side;
+
+      // Show only that connector
+      const conn = document.querySelector(`.connector[data-node="${hoverNode.id}"][data-side="${side}"]`);
+      if (conn) conn.classList.add('active-connector');
+    }
+
     document.addEventListener('mousemove', (e) => {
       const pos = screenToCanvas(e.clientX, e.clientY);
       
+      // Update connector proximity (show nearest side connector)
+      if (!connecting && !drawing && !dragging) {
+        updateConnectorProximity(pos);
+      }
+
       // Drawing shape preview
       if (drawing) {
         if (drawing.type === 'line') {
